@@ -1,0 +1,26 @@
+# Prod overrides — no secret defaults here (PRD §7): every sensitive value MUST come from an
+# env var / secrets manager. Missing JWT_SECRET, BANK_ENCRYPTION_KEY, DB_* etc. fails startup
+# via @Validated on the corresponding @ConfigurationProperties record, by design.
+spring:
+  jpa:
+    show-sql: false
+
+springdoc:
+  swagger-ui:
+    enabled: false
+  api-docs:
+    enabled: false
+
+management:
+  endpoint:
+    health:
+      show-details: never
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+logging:
+  level:
+    root: WARN
+    com.tinypayroll: INFO

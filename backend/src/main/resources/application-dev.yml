@@ -1,0 +1,21 @@
+# Local dev defaults — never used in prod. Safe to commit: no real secrets, only fallbacks
+# for a solo dev running Postgres on localhost with default creds.
+spring:
+  jpa:
+    show-sql: true
+
+app:
+  jwt:
+    # Dev-only fallback so `mvn spring-boot:run` works without a .env — override via JWT_SECRET.
+    secret: ${JWT_SECRET:dev-only-jwt-signing-secret-change-me-please-32bytes-min}
+  encryption:
+    # Dev-only fallback base64(32 zero bytes) — override via BANK_ENCRYPTION_KEY in real use.
+    key: ${BANK_ENCRYPTION_KEY:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=}
+
+springdoc:
+  swagger-ui:
+    enabled: true
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG

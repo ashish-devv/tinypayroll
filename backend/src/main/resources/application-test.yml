@@ -1,0 +1,11 @@
+# Used by @SpringBootTest / @DataJpaTest — Testcontainers Postgres supplies the real DB URL at
+# runtime (PRD §9), these are just fixed non-secret values so tests never depend on env vars.
+app:
+  jwt:
+    secret: test-only-jwt-signing-secret-not-for-real-use-32bytes-min
+  encryption:
+    key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+
+springdoc:
+  swagger-ui:
+    enabled: false

@@ -1,0 +1,30 @@
+# Backend wiring plan
+
+Source: `backend/APIS.md`, `PRD.md`, `CLAUDE.md`. Goal: replace mock/dummy layers with real API calls, one screen at a time.
+
+## Foundation (this pass)
+- [x] `src/services/api.ts` — fetch wrapper: base URL (10.0.2.2 for Android emulator / localhost otherwise), attaches `Authorization: Bearer`, auto-refreshes access token on 401 once, throws `ApiError{status,message}`.
+- [x] `src/services/auth.tsx` — real signIn/signUp/signOut against `/auth/login` `/auth/signup`, tokens in `expo-secure-store`, exposes `token`/`user`/loading/error state, restores session on app boot.
+- [x] `app/login.tsx`, `app/signup.tsx` — async handlers, loading spinner, inline error text.
+
+## Next (ask before continuing)
+- [x] `src/services/employees.ts` + wire `(tabs)/employees.tsx`, `employees/add.tsx` to `GET/POST/PUT/DELETE /employees` (list + create wired; edit/delete not yet used by UI, no screen for it)
+- [x] `src/services/attendance.ts` + wire `(tabs)/attendance.tsx` to `GET/POST /attendance` (tap a day to cycle present→absent→leave→holiday, upserts via POST; `/attendance/summary` not used — screen computes counts client-side from the fetched month)
+- [x] `src/services/payroll.ts` + wire `(tabs)/payroll.tsx`, `payroll/review.tsx`, `payroll/payslip.tsx` to `/payroll-runs` (list, create draft run for current month if none pending, finalize, view payslip via runId+employeeId route params; payslip screen still pulls company header from `mockBusiness` — swaps to real data once `settings/business.tsx` is wired)
+- [x] `src/services/business.ts` + wire `settings/business.tsx` to `GET/PUT /business/me` (also swapped `payroll/payslip.tsx`'s company header off `mockBusiness` onto the real `GET /business/me` data)
+- [x] `src/services/reports.ts` + wire `(tabs)/reports.tsx` to `/reports/*` (YTD trend + per-period totals from `expense-summary`; "Employee Cost" card reuses `listPayrollRuns()` for the latest run's line items; CSV export via `/reports/export?type=csv` shared natively or downloaded on web; PDF export + WhatsApp share are Phase 2 — buttons show a "Coming soon" alert; `attendance-summary` not consumed yet — screen doesn't have an attendance-trend UI to hang it on)
+- [x] Drop `src/data/mock.ts` once every screen reads from the API (last consumer was `(tabs)/index.tsx` — dashboard now fetches `getBusiness()`, `listEmployees('ACTIVE')`, `listAttendance()`, `listPayrollRuns()` on focus; "Recent Activity" stays a static placeholder — no audit/activity-feed endpoint exists in `backend/APIS.md` to back it; `src/data/mock.ts` deleted)
+- [x] Root `_layout.tsx` / route guard: redirect to `/login` when unauthenticated, `/onboarding` when `!hasOnboarded` (the `Stack.Protected` guards were already structurally correct; the real gap was that `hasOnboarded` lived only in React state and reset to `false` on every cold start — persisted it to the same secure-store-backed `store` used for tokens, keyed `tp_has_onboarded`, restored on boot alongside the access token)
+
+Each screen swap: replace mock import with a hook that calls the service, add loading/error UI, keep existing layout untouched.
+
+## Phase 2 — Team & polish
+
+Source: `PRD.md` §11 roadmap + Phase 2 deferrals scattered across `backend/APIS.md`/`backend/TASKS.md`. Two open design questions (PRD §12) should be settled before starting #1/#2 and #3/#4 respectively.
+
+- [x] **Payslip PDF export** — server-side generation (`openhtmltopdf`, HTML→PDF, per PRD §12 Q1) via new `GET /payroll-runs/{id}/payslip/{employeeId}/pdf` (`PayslipPdfService`); `payroll/payslip.tsx`'s "Download PDF" button saves to device cache (web: browser download) and "Share" opens the native share sheet (`expo-sharing`) — this also covers half of the WhatsApp MVP item below (the "Share PDF" button). Also fixed a pre-existing nav gap while testing: `(tabs)/payroll.tsx` only made `pending` runs tappable, so a `paid` run had no way back to its payslip screen (the only route was the one-time "View Payslips" button shown right after finalizing) — paid runs now tap through to the first employee's payslip too
+- [x] **Reports PDF export** — `GET /reports/export?type=pdf` now renders a payroll summary PDF (`ReportPdfService`, same letterhead style as the payslip PDF — company header, total/period-count/average stat cards, per-run table with status badges, total-spend band); `(tabs)/reports.tsx`'s "Download Payroll Summary (PDF)" button saves to device cache (web: browser download) via `downloadReportPdf`/`downloadReportPdfWeb` in `src/services/reports.ts`, mirroring the payslip PDF download pattern
+- [x] **WhatsApp payslip delivery (MVP, client-side)** — both halves of the two-button flow are done on `payroll/payslip.tsx`: "Share" (PDF attachment via `expo-sharing`, done earlier) + new "Open Chat with {Employee}" button (`wa.me/<phone>?text=...` prefilled message via `Linking.openURL`), shown only when `business.whatsappPayslip` is on. Added `phone` to the frontend `Employee` type/`src/services/employees.ts` mapping — the backend `EmployeeResponse.phone` field already existed but wasn't surfaced client-side. Owner attaches the just-downloaded PDF manually in the opened chat (WhatsApp's `wa.me` link can't pre-attach a file, only pre-fill text — see PRD §12 note on this constraint)
+- [ ] **WhatsApp payslip delivery (automated, future)** — true one-tap "send PDF to employee's chat" requires the paid WhatsApp Business API (Meta-approved sender, template messages); revisit only if owners ask for automation beyond the MVP two-button flow
+- [ ] **Staff invites (multi-user)** — decide invite flow (PRD §12 Q2: email-link vs. owner-set temp password); `OWNER`/`ADMIN`/`STAFF` roles already exist and are enforced, just no way for an owner to add a `STAFF` teammate yet
+- [ ] **Email reminders** — `Business.autoReminders` toggle exists in schema but unconsumed; needs email delivery infra (may share with staff-invite email flow if that route is chosen) + a scheduler for payday/attendance-not-marked nudges
