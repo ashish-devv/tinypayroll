@@ -7,6 +7,7 @@ WORKDIR /app
 # Cache dependencies first: copy only the files needed to resolve them.
 COPY .mvn/ .mvn/
 COPY mvnw pom.xml ./
+RUN chmod +x mvnw
 RUN --mount=type=cache,target=/root/.m2 ./mvnw -B dependency:go-offline
 
 # Copy sources and build the fat jar (skip tests — they need Docker/Testcontainers).
