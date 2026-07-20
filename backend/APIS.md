@@ -85,19 +85,58 @@ Returns `EmployeeResponse`.
 ```json
 // request (CreateEmployeeRequest)
 {
-  "name": "Ravi Kumar", "role": "Cashier", "baseSalary": 25000, "salaryType": "MONTHLY",
+  "name": "Ravi Kumar", "role": "Cashier",
+  "department": "Operations", "departmentId": 2, "designationId": 5,
+  "baseSalary": 25000, "salaryType": "MONTHLY",
   "avatarUrl": null, "joinDate": "2026-01-15", "phone": "+919999999999",
   "bankAccountNumber": "1234567890", "bankName": "HDFC", "ifsc": "HDFC0001234"
 }
 // 201 -> EmployeeResponse
 ```
-`salaryType` is `MONTHLY` or `DAILY`.
+`salaryType` is `MONTHLY` or `DAILY`. `department`/`departmentId`/`designationId` are optional org-catalog links (see the **catalog** section); `role` is the free-text job title and stays required.
 
 ### PUT /employees/{id} — OWNER/ADMIN
 Same body as create, plus required `status` (`ACTIVE`/`INACTIVE`). Returns `EmployeeResponse`.
 
 ### DELETE /employees/{id} — OWNER/ADMIN
 Soft delete. 204 No Content.
+
+---
+
+## catalog (departments / designations) — requires auth; write = OWNER/ADMIN
+
+Per-tenant org catalogs. Employees optionally link to a department/designation (see POST /employees). A designation with `departmentId: null` is a global role usable under any department.
+
+### GET /departments
+Returns `List<DepartmentResponse>` (`{ id, name }`).
+
+### POST /departments — OWNER/ADMIN
+```json
+{ "name": "Operations" }
+// 201 -> DepartmentResponse
+```
+
+### PUT /departments/{id} — OWNER/ADMIN
+Same body as create. 200 -> `DepartmentResponse`.
+
+### DELETE /departments/{id} — OWNER/ADMIN
+204 No Content.
+
+### GET /designations
+Returns `List<DesignationResponse>` (`{ id, departmentId, name, defaultSalary, defaultSalaryType }`).
+
+### POST /designations — OWNER/ADMIN
+```json
+{ "departmentId": 2, "name": "Cashier", "defaultSalary": 25000, "defaultSalaryType": "MONTHLY" }
+// 201 -> DesignationResponse
+```
+`departmentId` nullable (global role). `defaultSalary`/`defaultSalaryType` optional — used to prefill the Add Employee form.
+
+### PUT /designations/{id} — OWNER/ADMIN
+Same body as create. 200 -> `DesignationResponse`.
+
+### DELETE /designations/{id} — OWNER/ADMIN
+204 No Content.
 
 ---
 
@@ -138,7 +177,7 @@ Returns full `PayrollRunResponse` including `items: List<PayrollRunItemResponse>
 { "month": 6, "year": 2026 }
 // 201 -> PayrollRunResponse (status DRAFT)
 ```
-Auto-seeds items from attendance: `unpaidLeave = absentDays × dailyRate` (`dailyRate = baseSalary / workingDaysPerMonth` for MONTHLY, or `baseSalary` for DAILY). Rejects with 409 if a run already exists for that month/year.
+Accepts any past or future period. Auto-seeds items from attendance: `unpaidLeave = absentDays × dailyRate` (`dailyRate = baseSalary / workingDaysPerMonth` for MONTHLY, or `baseSalary` for DAILY). Rejects with 409 if a **live** (non-deleted) run already exists for that month/year — a soft-deleted period can be recreated.
 
 ### PUT /payroll-runs/{runId}/items/{itemId} — OWNER/ADMIN
 ```json
@@ -150,6 +189,9 @@ Auto-seeds items from attendance: `unpaidLeave = absentDays × dailyRate` (`dail
 
 ### POST /payroll-runs/{id}/finalize — OWNER/ADMIN
 Marks the run PAID, sets `paidAt`. 200 -> `PayrollRunResponse`. Rejects with 409 on double-finalize.
+
+### DELETE /payroll-runs/{id} — OWNER/ADMIN
+Soft delete (sets `deletedAt`). 204 No Content. The period is excluded from list/get/reports and frees it up to be recreated (unique constraint is `(business_id, month, year, deleted_at)` — NULLs are distinct, so a live run still blocks duplicates).
 
 ### GET /payroll-runs/{id}/payslip/{employeeId}
 Returns `PayslipResponse` (company header + one employee's line item) as JSON.

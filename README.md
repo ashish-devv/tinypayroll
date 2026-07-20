@@ -36,7 +36,8 @@ TinyPayroll is a full-stack payroll app aimed at small business owners — baker
 | **Authentication** | Email + password signup/login. Signup creates a business (tenant) and its owner in one step. JWT access + refresh tokens, stored securely on-device. A `401` from any API call drops you straight back to the login screen. |
 | **Employees** | Add, view, edit, and delete (soft-delete) employees. Each carries role, salary type (monthly/daily), base salary, join date, phone, and bank details. |
 | **Attendance** | Month calendar. Tap a day to cycle a status: present → absent → leave → holiday. Marks are upserted per employee per day. |
-| **Payroll runs** | Create a draft run for a month — it auto-seeds line items from attendance (absent days become unpaid-leave deductions). Adjust overtime/bonus/advances/deductions per employee, then finalize to lock it as **Paid**. |
+| **Payroll runs** | Create a draft run for any month — past, present, or future via the period picker. It auto-seeds line items from attendance (absent days become unpaid-leave deductions). Adjust overtime/bonus/advances/deductions per employee, then finalize to lock it as **Paid**. Runs can be soft-deleted (any status); deleting frees the period so it can be recreated. |
+| **Org catalog** | Per-business departments and designations, managed from a dedicated catalog screen. Roles/departments are picked (or created on the fly) when adding/editing employees. |
 | **Payslips** | Per-run, per-employee payslip. Export to PDF, share via the native share sheet, or open a prefilled WhatsApp chat with the employee. |
 | **Reports** | Year-to-date expense trend, per-period totals, and employee-cost breakdown. Export as CSV or PDF. |
 | **Business config** | Company profile + payroll settings (pay day, working days/month, OT rate, currency) and feature toggles (auto reminders, WhatsApp payslips). |
@@ -55,7 +56,7 @@ All screens are built and support both light and dark mode.
 | Dashboard | `app/(tabs)/index.tsx` | Overview — headcount, this month's payroll, quick actions |
 | Employees list | `app/(tabs)/employees.tsx` | Tap a row → employee detail |
 | Employee detail | `app/employees/[id].tsx` | Profile, salary, bank info; Edit / Delete |
-| Add / Edit employee | `app/employees/add.tsx`, `edit.tsx` | Create and update forms |
+| Add / Edit employee | `app/employees/add.tsx`, `edit.tsx` | Create and update forms; dept/role via searchable ComboBox |
 | Attendance calendar | `app/(tabs)/attendance.tsx` | Tap-to-mark month grid |
 | Payroll runs | `app/(tabs)/payroll.tsx` | List of runs (pending + paid) |
 | Review payroll | `app/payroll/review.tsx` | Adjust line items, then finalize |
@@ -63,6 +64,7 @@ All screens are built and support both light and dark mode.
 | Payslip | `app/payroll/payslip.tsx` | Single payslip + PDF/share/WhatsApp |
 | Reports | `app/(tabs)/reports.tsx` | Trends + CSV/PDF export |
 | Business config | `app/settings/business.tsx` | Reached via the ⚙ gear on the dashboard |
+| Org catalog | `app/settings/catalog.tsx` | Departments & designations CRUD; reached via the sidebar |
 | Login / Signup / Onboarding | `app/login.tsx`, `signup.tsx`, `onboarding.tsx` | Auth + first-run flow |
 
 ---
@@ -96,7 +98,7 @@ tinyPayroll/
 │   ├── (tabs)/              #   bottom-tab screens
 │   ├── employees/           #   detail, add, edit
 │   ├── payroll/             #   review, payslips, payslip
-│   ├── settings/            #   business config
+│   ├── settings/            #   business config, org catalog
 │   └── _layout.tsx          #   root stack + auth guard
 ├── src/
 │   ├── services/            # API layer (api.ts + one file per domain)

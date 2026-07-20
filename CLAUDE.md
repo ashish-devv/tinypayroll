@@ -29,21 +29,6 @@ Design system: **"Calm Precision"**
 
 ## Dark mode
 
-**All screens must support both light and dark mode.** Style with NativeWind classes and the `dark:` variant (driven automatically by `useColorScheme`). Never hardcode design hex in JSX className — use the token classes below.
-
-| Light token | Dark equivalent |
-|-------------|----------------|
-| `#f8f9ff` bg | `#0d0f14` |
-| `#ffffff` surface | `#161a24` |
-| `#eff4ff` surface-low | `#1e2235` |
-| `#0b1c30` text | `#e8eaf0` |
-| `#45464c` muted | `#8b8fa8` |
-| `#e0e3ea` border | `#2a2f3e` |
-| `#1a1f2c` ink | stays `#1a1f2c` |
-| `#d4af37` gold | stays `#d4af37` |
-
-## Dark mode
-
 **All screens must support both light and dark mode.** Styling is done with **NativeWind v4** (Tailwind classes). Dark mode uses the `dark:` variant, which follows the system `useColorScheme` automatically — never build a manual light/dark hook for colors in JSX.
 
 Design tokens are defined in `tailwind.config.js` as light/dark pairs. Use them via className:
@@ -71,7 +56,7 @@ Prefer these over raw primitives:
 - `<AppText className="...">` — defaults to Roboto + primary text color
 - `<Divider />` — hairline separator
 - `<TopBar title variant="surface"|"glass" onSettings? onNotifications? />` — the shared header for all 5 tab screens. Renders a hamburger (☰) that opens the sidebar via `useSidebar().open()`, the TP badge + title, and optional bell/gear on the right. Use `variant="glass"` for the Dashboard's translucent bar. Do **not** hand-roll a tab header — use this so all tabs stay consistent.
-- `<SidebarProvider>` + `useSidebar()` — the slide-in drawer. `SidebarProvider` wraps `<Tabs>` (in `app/(tabs)/_layout.tsx`, inside `AuthProvider`); it opens on hamburger tap or a left-edge swipe, closes on backdrop tap / drag. NAV array is extensible (Dashboard, Business Settings today); Log Out pinned at the bottom calls `signOut`. Requires `GestureHandlerRootView` at the app root (already wired in `app/_layout.tsx`).
+- `<SidebarProvider>` + `useSidebar()` — the slide-in drawer. `SidebarProvider` wraps `<Tabs>` (in `app/(tabs)/_layout.tsx`, inside `AuthProvider`); it opens on hamburger tap or a left-edge swipe, closes on backdrop tap / drag. NAV array is extensible (Dashboard, Business Settings, Org Catalog today); Log Out pinned at the bottom calls `signOut`. Requires `GestureHandlerRootView` at the app root (already wired in `app/_layout.tsx`).
 - `usePalette()` → `P` — raw hex values for things that **cannot** take a className: Ionicons `color`, native `style` props, `placeholderTextColor`, StatusBar, and `P.status.*` (attendance).
 - `useShadows()` → `{ card, hero }` — apply via `style` on a non-Card `View`.
 - `pressScale` — `style={pressScale}` for press-in scale on tappable Pressables.
@@ -116,13 +101,19 @@ app/
     payroll.tsx         # Payroll runs list ✅
     reports.tsx         # Reports + export ✅
   employees/
-    add.tsx             # Add Employee modal ✅
+    add.tsx             # Add Employee modal ✅ (dept/role via ComboBox off the catalog, create-on-the-fly)
+    edit.tsx            # Edit Employee ✅
+    [id].tsx            # Employee detail ✅
   payroll/
     review.tsx          # Review Payroll ✅ (success overlay = absolute View, NOT Modal/Sheet)
     payslip.tsx         # Payslip ✅
+    payslips.tsx        # Payslips list ✅
   settings/
     business.tsx        # Business Configuration ✅ (reached via ⚙ gear on Dashboard top bar)
+    catalog.tsx         # Org Catalog — departments & designations CRUD ✅ (reached via sidebar)
 ```
+
+Payroll runs can be created for any past/future month (period picker sheet) and soft-deleted (trash icon → confirm sheet). Create/delete errors surface in a centered popup, not inline banners.
 
 ### `src/` — all non-route code
 
@@ -131,13 +122,16 @@ src/
   components/
     ui/                 # shared NativeWind UI: Screen, Card, AppText, Divider, Button, Chip,
                         #   TopBar, Sidebar (SidebarProvider/useSidebar), palette, shadows
+  components/
+    ui/
+      ComboBox.tsx      # typeahead select with create-on-the-fly (departments/designations)
   types/
-    index.ts            # Employee, PayrollRun, AttendanceRecord, BusinessConfig, PayrollAdjustment
+    index.ts            # Employee, PayrollRun, AttendanceRecord, BusinessConfig, PayrollAdjustment, Department, Designation
   utils/
     payroll.ts          # calculateFinalSalary(), buildPayrollItem(), formatCurrency() — pure, assert at bottom
   data/
     mock.ts             # 5 employees, 3 payroll runs (Jun pending, May/Apr paid), attendance records
-  services/             # Firebase stubs (empty — future)
+  services/             # REST clients: api, auth, employees, payroll, reports, departments, designations, theme
 ```
 
 Styling config lives at the repo root: `tailwind.config.js` (design tokens), `global.css`, `metro.config.js` (`withNativeWind`), `babel.config.js` (`nativewind/babel` + `jsxImportSource`).
@@ -152,7 +146,7 @@ Styling config lives at the repo root: `tailwind.config.js` (design tokens), `gl
 
 ### Stack screen headers
 
-All Stack screens (employees/add, payroll/review, payroll/payslip, settings/business) get their header from `_layout.tsx` — **do not add a manual top bar inside these screens**. Use `<Screen edges={['bottom']}>` to avoid double padding.
+All Stack screens (employees/add, employees/edit, employees/[id], payroll/review, payroll/payslip, payroll/payslips, settings/business, settings/catalog) get their header from `_layout.tsx` — **do not add a manual top bar inside these screens**. Use `<Screen edges={['bottom']}>` to avoid double padding.
 
 ### Salary formula
 
@@ -175,5 +169,9 @@ Implemented in `src/utils/payroll.ts`. Always compute here, never inline in comp
 | Payslip | `payroll/payslip.tsx` | ✅ |
 | Reports | `(tabs)/reports.tsx` | ✅ |
 | Business Config | `settings/business.tsx` | ✅ |
+| Edit Employee | `employees/edit.tsx` | ✅ |
+| Employee detail | `employees/[id].tsx` | ✅ |
+| Payslips list | `payroll/payslips.tsx` | ✅ |
+| Org Catalog | `settings/catalog.tsx` | ✅ |
 
 For any new screen: pull from Stitch MCP first, match layout, use `<Screen>`/`<Card>`/`<AppText>` from `src/components/ui`, implement dark mode via `dark:` classes, add press-in scale (`style={pressScale}`) on tappable cards.

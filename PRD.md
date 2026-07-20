@@ -117,9 +117,17 @@ All entities extend a `BaseEntity` (`id`, `createdAt`, `updatedAt` via `@Created
 
 Refresh tokens are stored **hashed** (never plaintext) so a DB leak doesn't hand out live sessions. Revocable individually (logout) or in bulk (logout-all-devices, password change).
 
+### `Department` & `Designation` (org catalog)
+Per-tenant catalogs so `Employee.role`/department are picked from a managed list instead of free text.
+| `Department` | id, business_id (FK), name |
+|---|
+| `Designation` | id, business_id (FK), name, department_id (FK, nullable — a role can be unassigned/global) |
+
+Employees reference these; a role with `department_id = null` is valid for any department. Managed via the catalog settings screen + CRUD endpoints below.
+
 ### `Employee`
 Mirrors `src/types/index.ts` `Employee` + salary type + bank details:
-| id, business_id (FK), name, role, baseSalary, salaryType (`MONTHLY`/`DAILY`), avatarUrl, status (`ACTIVE`/`INACTIVE`), joinDate, phone, bankAccountNumber (encrypted, see §6), bankName, ifsc |
+| id, business_id (FK), name, role, department, department_id (FK → Department, nullable), designation_id (FK → Designation, nullable), baseSalary, salaryType (`MONTHLY`/`DAILY`), avatarUrl, status (`ACTIVE`/`INACTIVE`), joinDate, phone, bankAccountNumber (encrypted, see §6), bankName, ifsc |
 |---|
 
 ### `AttendanceRecord`
@@ -128,9 +136,9 @@ Mirrors `src/types/index.ts` `Employee` + salary type + bank details:
 Unique constraint: `(employee_id, date)` — one record per employee per day, upsert semantics on mark.
 
 ### `PayrollRun`
-| id, business_id (FK), period (e.g. "2026-06"), month, year, status (`DRAFT`/`PENDING`/`PAID`/`FAILED`), totalAmount, runDate, paidAt, createdByUserId |
+| id, business_id (FK), period (e.g. "2026-06"), month, year, status (`DRAFT`/`PENDING`/`PAID`/`FAILED`), totalAmount, runDate, paidAt, deletedAt (nullable — soft delete), createdByUserId |
 |---|
-Unique constraint: `(business_id, month, year)` — one run per period per tenant.
+Unique constraint: `(business_id, month, year, deleted_at)` — one **live** run per period per tenant. Postgres treats NULLs as distinct, so `deleted_at` in the constraint lets a soft-deleted period be recreated while still blocking a second live run. Runs can be created for any past or future month/year, not just the current one. Delete is soft (stamps `deletedAt`); list/get/reports exclude deleted rows.
 
 ### `PayrollRunItem`
 Mirrors `PayrollRunItem`/`PayrollAdjustment` types exactly:
@@ -228,6 +236,18 @@ PUT    /api/v1/employees/{id}
 DELETE /api/v1/employees/{id}         soft delete → status INACTIVE
 ```
 
+**Org catalog** (`OWNER`/`ADMIN` write, all roles read) — departments & designations picked when adding/editing employees
+```
+GET    /api/v1/departments
+POST   /api/v1/departments
+PUT    /api/v1/departments/{id}
+DELETE /api/v1/departments/{id}
+GET    /api/v1/designations
+POST   /api/v1/designations
+PUT    /api/v1/designations/{id}
+DELETE /api/v1/designations/{id}
+```
+
 **Attendance** (`STAFF`+ can mark, `ADMIN`+ can edit past entries)
 ```
 GET    /api/v1/attendance?month=&year=&employeeId=
@@ -239,12 +259,13 @@ GET    /api/v1/attendance/summary?month=&year=
 **Payroll** (`OWNER`/`ADMIN` only)
 ```
 GET    /api/v1/payroll-runs?status=&page=&size=
-POST   /api/v1/payroll-runs            create DRAFT for a period, auto-seeded from attendance
+POST   /api/v1/payroll-runs            create DRAFT for any (past/future) period, auto-seeded from attendance
 GET    /api/v1/payroll-runs/{id}
-PUT    /api/v1/payroll-runs/{id}/items/{employeeId}   adjust bonus/advances/etc. pre-finalize
+PUT    /api/v1/payroll-runs/{id}/items/{itemId}       adjust bonus/advances/etc. pre-finalize
 POST   /api/v1/payroll-runs/{id}/finalize             locks the run, status → PAID
-GET    /api/v1/payroll-runs/{id}/payslips/{employeeId}
-GET    /api/v1/payroll-runs/{id}/payslips/{employeeId}/pdf
+DELETE /api/v1/payroll-runs/{id}                      soft delete → stamps deletedAt (any status)
+GET    /api/v1/payroll-runs/{id}/payslip/{employeeId}
+GET    /api/v1/payroll-runs/{id}/payslip/{employeeId}/pdf
 ```
 
 **Reports**
