@@ -1,52 +1,13 @@
-import { ScrollView, YStack, XStack, Text, Spinner } from 'tamagui';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollView, View, Pressable, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, useColorScheme } from 'react-native';
 import { useEffect, useState } from 'react';
 
+import { Screen, Card, AppText, TopBar, usePalette, useShadows, pressScale } from '@/src/components/ui';
 import { listEmployees } from '@/src/services/employees';
 import { listAttendance, markAttendance } from '@/src/services/attendance';
 import type { AttendanceStatus, Employee } from '@/src/types';
 
 const CYCLE: AttendanceStatus[] = ['present', 'absent', 'leave', 'holiday'];
-
-function useC() {
-  const dark = useColorScheme() === 'dark';
-  return {
-    bg:          dark ? '#0d0f14' : '#f8f9ff',
-    surface:     dark ? '#161a24' : '#ffffff',
-    surfaceLow:  dark ? '#1e2235' : '#eff4ff',
-    text:        dark ? '#e8eaf0' : '#0b1c30',
-    muted:       dark ? '#8b8fa8' : '#45464c',
-    placeholder: dark ? '#555a72' : '#9ba1b0',
-    border:      dark ? '#2a2f3e' : '#e0e3ea',
-    ink:         '#1a1f2c',
-    gold:        '#d4af37',
-    dark,
-    // Status cell styles — saturated in dark so they're visible on dark surface
-    status: {
-      present: { bg: dark ? '#166534' : '#dcfce7', dot: '#16a34a', text: dark ? '#ffffff' : '#15803d' },
-      absent:  { bg: dark ? '#991b1b' : '#fee2e2', dot: '#dc2626', text: dark ? '#ffffff' : '#dc2626' },
-      leave:   { bg: dark ? '#854d0e' : '#fef9c3', dot: '#ca8a04', text: dark ? '#ffffff' : '#92400e' },
-      holiday: { bg: dark ? '#1e3a5f' : '#dbeafe', dot: '#3b82f6', text: dark ? '#ffffff' : '#1d4ed8' },
-      weekend: { bg: 'transparent',                dot: 'transparent', text: '' },
-    } as Record<AttendanceStatus, { bg: string; dot: string; text: string }>,
-    cardShadow: {
-      shadowColor: dark ? '#000000' : '#1a1f2c',
-      shadowOpacity: dark ? 0.28 : 0.07,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: dark ? 5 : 2,
-    } as const,
-    heroShadow: {
-      shadowColor: '#d4af37',
-      shadowOpacity: dark ? 0.28 : 0.2,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 6 },
-      elevation: dark ? 10 : 6,
-    } as const,
-  };
-}
 
 const DAYS   = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 const MONTHS = ['January','February','March','April','May','June',
@@ -60,7 +21,8 @@ function getFirstDayOfWeek(year: number, month: number) {
 }
 
 export default function AttendanceScreen() {
-  const C = useC();
+  const P = usePalette();
+  const shadows = useShadows();
 
   const now = new Date();
   const [year,  setYear]  = useState(now.getFullYear());
@@ -141,206 +103,183 @@ export default function AttendanceScreen() {
 
   if (!emp) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
-        <YStack flex={1} alignItems="center" justifyContent="center" gap={8}>
+      <Screen variant="surface">
+        <View className="flex-1 items-center justify-center gap-2">
           {error ? (
-            <Text fontSize={13} fontFamily="$body" color="#dc2626">{error}</Text>
+            <AppText className="text-[13px] text-rose-600">{error}</AppText>
           ) : (
-            <Spinner color={C.gold} />
+            <ActivityIndicator color={P.primary} />
           )}
-        </YStack>
-      </SafeAreaView>
+        </View>
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
+    <Screen variant="surface">
 
       {/* ── Top bar ── */}
-      <XStack paddingHorizontal={20} paddingVertical={14}
-              alignItems="center" justifyContent="space-between"
-              backgroundColor={C.surface} borderBottomWidth={1} borderBottomColor={C.border}>
-        <XStack alignItems="center" gap={10}>
-          <YStack width={34} height={34} borderRadius={17} backgroundColor={C.ink}
-                  alignItems="center" justifyContent="center">
-            <Text color="white" fontSize={12} fontFamily="$body" fontWeight="700" letterSpacing={0.5}>TP</Text>
-          </YStack>
-          <Text fontSize={16} fontFamily="$body" fontWeight="600" color={C.text}>Attendance</Text>
-        </XStack>
-        <Pressable hitSlop={12}>
-          <Ionicons name="notifications-outline" size={22} color={C.muted} />
-        </Pressable>
-      </XStack>
+      <TopBar title="Attendance" onNotifications={() => {}} />
 
-      <ScrollView backgroundColor={C.bg} showsVerticalScrollIndicator={false}>
-        <YStack paddingHorizontal={20} paddingTop={24} paddingBottom={32} gap={20}>
+      <ScrollView className="bg-canvas-light dark:bg-canvas-dark" showsVerticalScrollIndicator={false}>
+        <View className="gap-5 px-5 pb-8 pt-6">
 
           {/* ── Employee selector ── */}
-          <YStack backgroundColor={C.surface} borderRadius={14} borderWidth={1}
-                  borderColor={C.border} paddingHorizontal={16} paddingVertical={14}
-                  style={C.cardShadow}>
-            <XStack alignItems="center" gap={12}>
-              <YStack width={40} height={40} borderRadius={20} backgroundColor={C.ink}
-                      alignItems="center" justifyContent="center">
-                <Text fontSize={13} fontFamily="$body" fontWeight="700" color="white">
+          <Card className="px-4 py-3.5">
+            <View className="flex-row items-center gap-3">
+              <View className="h-10 w-10 items-center justify-center rounded-full bg-primary">
+                <AppText className="font-inter-bold text-[13px] text-white">
                   {emp.avatarInitials}
-                </Text>
-              </YStack>
-              <YStack flex={1}>
-                <Text fontSize={14} fontFamily="$body" fontWeight="600" color={C.text}>{emp.name}</Text>
-                <Text fontSize={12} fontFamily="$body" color={C.muted}>
+                </AppText>
+              </View>
+              <View className="flex-1">
+                <AppText className="font-inter-semibold text-sm">{emp.name}</AppText>
+                <AppText className="text-xs text-muted-light dark:text-muted-dark">
                   {emp.role} • {MONTHS[month]} {year}
-                </Text>
-              </YStack>
-              <XStack gap={4}>
+                </AppText>
+              </View>
+              <View className="flex-row gap-1">
                 <Pressable hitSlop={8} onPress={() => setSelectedEmpIdx(i => Math.max(0, i - 1))}>
                   <Ionicons name="chevron-up" size={18}
-                            color={selectedEmpIdx === 0 ? C.placeholder : C.muted} />
+                            color={selectedEmpIdx === 0 ? P.placeholder : P.muted} />
                 </Pressable>
                 <Pressable hitSlop={8}
                            onPress={() => setSelectedEmpIdx(i => Math.min(activeEmployees.length - 1, i + 1))}>
                   <Ionicons name="chevron-down" size={18}
-                            color={selectedEmpIdx === activeEmployees.length - 1 ? C.placeholder : C.muted} />
+                            color={selectedEmpIdx === activeEmployees.length - 1 ? P.placeholder : P.muted} />
                 </Pressable>
-              </XStack>
-            </XStack>
-          </YStack>
+              </View>
+            </View>
+          </Card>
 
           {/* ── Calendar card ── */}
-          <YStack backgroundColor={C.surface} borderRadius={14} borderWidth={1}
-                  borderColor={C.border} padding={16} gap={14} style={C.cardShadow}>
+          <Card className="gap-3.5 p-4">
 
             {/* Month nav */}
-            <XStack alignItems="center" justifyContent="space-between">
+            <View className="flex-row items-center justify-between">
               <Pressable onPress={prevMonth} hitSlop={12}>
-                <Ionicons name="chevron-back" size={20} color={C.muted} />
+                <Ionicons name="chevron-back" size={20} color={P.muted} />
               </Pressable>
-              <Text fontSize={15} fontFamily="$body" fontWeight="600" color={C.text}>
+              <AppText className="font-inter-semibold text-[15px]">
                 {MONTHS[month]} {year}
-              </Text>
+              </AppText>
               <Pressable onPress={nextMonth} hitSlop={12}>
-                <Ionicons name="chevron-forward" size={20} color={C.muted} />
+                <Ionicons name="chevron-forward" size={20} color={P.muted} />
               </Pressable>
-            </XStack>
+            </View>
 
             {/* Day-of-week headers */}
-            <XStack>
+            <View className="flex-row">
               {DAYS.map(d => (
-                <YStack key={d} flex={1} alignItems="center">
-                  <Text fontSize={11} fontFamily="$body" fontWeight="600" letterSpacing={0.3}
-                        color={d === 'Sa' || d === 'Su' ? C.placeholder : C.muted}>
+                <View key={d} className="flex-1 items-center">
+                  <AppText className={`font-inter-semibold text-[11px] tracking-[0.3px] ${d === 'Sa' || d === 'Su' ? 'text-placeholder-light dark:text-placeholder-dark' : 'text-muted-light dark:text-muted-dark'}`}>
                     {d}
-                  </Text>
-                </YStack>
+                  </AppText>
+                </View>
               ))}
-            </XStack>
+            </View>
 
             {/* Calendar grid */}
-            <YStack gap={4}>
+            <View className="gap-1">
               {Array.from({ length: cells.length / 7 }, (_, row) => (
-                <XStack key={row}>
+                <View key={row} className="flex-row">
                   {cells.slice(row * 7, row * 7 + 7).map((day, col) => {
-                    if (!day) return <YStack key={col} flex={1} />;
+                    if (!day) return <View key={col} className="flex-1" />;
 
                     const status  = attMap[day];
                     const isToday = isCurrentMonth && day === today;
-                    const st      = status ? C.status[status] : null;
+                    const st      = status ? P.status[status] : null;
 
-                    // today = gold; status cell = saturated colour; plain = transparent
-                    const cellBg   = isToday ? C.gold : (st?.bg ?? 'transparent');
+                    // today = primary indigo; status cell = saturated colour; plain = transparent
+                    const cellBg   = isToday ? P.primary : (st?.bg ?? 'transparent');
                     const textColor = isToday
-                      ? C.ink
+                      ? '#ffffff'
                       : status === 'weekend'
-                        ? C.placeholder
+                        ? P.placeholder
                         : st
                           ? st.text
-                          : C.text;
+                          : P.text;
 
                     return (
                       <Pressable key={col} onPress={() => markDay(day, status)} style={{ flex: 1, alignItems: 'center' }}>
-                        <YStack width={34} height={34} borderRadius={17}
-                                alignItems="center" justifyContent="center"
-                                backgroundColor={cellBg}>
-                          <Text fontSize={12} fontFamily="$body"
-                                fontWeight={isToday ? '700' : '500'}
-                                color={textColor}>
+                        <View className="h-[34px] w-[34px] items-center justify-center rounded-[17px]"
+                              style={{ backgroundColor: cellBg }}>
+                          <AppText
+                            className={isToday ? 'font-inter-bold text-xs' : 'font-inter-medium text-xs'}
+                            style={{ color: textColor }}>
                             {day}
-                          </Text>
+                          </AppText>
                           {/* dot only when no coloured bg (plain days) */}
-                          {status && status !== 'weekend' && !isToday && C.dark && (
+                          {status && status !== 'weekend' && !isToday && P.dark && (
                             // in dark: bg is saturated — dot redundant; skip
                             null
                           )}
-                          {status && status !== 'weekend' && !isToday && !C.dark && (
-                            <YStack position="absolute" bottom={2}
-                                    width={4} height={4} borderRadius={2}
-                                    backgroundColor={st?.dot ?? 'transparent'} />
+                          {status && status !== 'weekend' && !isToday && !P.dark && (
+                            <View className="absolute bottom-0.5 h-1 w-1 rounded-[2px]"
+                                  style={{ backgroundColor: st?.dot ?? 'transparent' }} />
                           )}
-                        </YStack>
+                        </View>
                       </Pressable>
                     );
                   })}
-                </XStack>
+                </View>
               ))}
-            </YStack>
-          </YStack>
+            </View>
+          </Card>
 
           {/* ── Summary stats ── */}
-          <XStack gap={10}>
+          <View className="flex-row gap-2.5">
             {[
               { label: 'Present', value: present, dot: '#16a34a' },
               { label: 'Absent',  value: absent,  dot: '#dc2626' },
               { label: 'Offs',    value: offs,     dot: '#3b82f6' },
             ].map(s => (
-              <YStack key={s.label} flex={1} backgroundColor={C.surface} borderRadius={12}
-                      borderWidth={1} borderColor={C.border} paddingVertical={14}
-                      alignItems="center" gap={4} style={C.cardShadow}>
-                <Text fontSize={22} fontFamily="$body" fontWeight="700" color={C.text}>{s.value}</Text>
-                <XStack alignItems="center" gap={5}>
-                  <YStack width={7} height={7} borderRadius={4} backgroundColor={s.dot} />
-                  <Text fontSize={12} fontFamily="$body" color={C.muted}>{s.label}</Text>
-                </XStack>
-              </YStack>
+              <Card key={s.label} className="flex-1 items-center gap-1 rounded-button py-3.5">
+                <AppText className="font-mono text-[22px] text-text-light dark:text-text-dark">{s.value}</AppText>
+                <View className="flex-row items-center gap-[5px]">
+                  <View className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: s.dot }} />
+                  <AppText className="text-xs text-muted-light dark:text-muted-dark">{s.label}</AppText>
+                </View>
+              </Card>
             ))}
-          </XStack>
+          </View>
 
           {/* ── Legend ── */}
-          <XStack justifyContent="center" gap={16} flexWrap="wrap">
+          <View className="flex-row flex-wrap justify-center gap-4">
             {[
               { label: 'Present',    dot: '#16a34a' },
               { label: 'Absent',     dot: '#dc2626' },
               { label: 'Paid Leave', dot: '#ca8a04' },
               { label: 'Holiday',    dot: '#3b82f6' },
             ].map(l => (
-              <XStack key={l.label} alignItems="center" gap={5}>
-                <YStack width={7} height={7} borderRadius={4} backgroundColor={l.dot} />
-                <Text fontSize={12} fontFamily="$body" color={C.muted}>{l.label}</Text>
-              </XStack>
+              <View key={l.label} className="flex-row items-center gap-[5px]">
+                <View className="h-[7px] w-[7px] rounded-full" style={{ backgroundColor: l.dot }} />
+                <AppText className="text-xs text-muted-light dark:text-muted-dark">{l.label}</AppText>
+              </View>
             ))}
-          </XStack>
+          </View>
 
           {/* ── Quick mark CTA ── */}
           <Pressable
             onPress={() => isCurrentMonth && markDay(today, attMap[today])}
-            style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
+            style={pressScale}
           >
-            <XStack backgroundColor={C.ink} borderRadius={14} paddingVertical={16}
-                    alignItems="center" justifyContent="center" gap={8} style={C.heroShadow}>
+            <View className="flex-row items-center justify-center gap-2 rounded-button bg-primary py-4" style={shadows.hero}>
               <Ionicons name="calendar-outline" size={18} color="white" />
-              <Text fontSize={15} fontFamily="$body" fontWeight="600" color="white">
-                Quick Mark Today's Attendance
-              </Text>
-            </XStack>
+              <AppText className="font-inter-semibold text-[15px] text-white">
+                Quick Mark Today&apos;s Attendance
+              </AppText>
+            </View>
           </Pressable>
 
-          {error && <Text fontSize={12} fontFamily="$body" color="#dc2626" textAlign="center">{error}</Text>}
+          {error && <AppText className="text-center text-xs text-rose-600">{error}</AppText>}
 
-          <Text fontSize={12} fontFamily="$body" color={C.placeholder} textAlign="center">
+          <AppText className="text-center text-xs text-placeholder-light dark:text-placeholder-dark">
             {loading ? 'Loading…' : 'Tap on any date to cycle status (present → absent → leave → holiday).'}
-          </Text>
+          </AppText>
 
-        </YStack>
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }

@@ -10,6 +10,9 @@ function toEmployee(r: any): Employee {
     id: String(r.id),
     name: r.name,
     role: r.role,
+    department: r.department ?? undefined,
+    departmentId: r.departmentId != null ? String(r.departmentId) : undefined,
+    designationId: r.designationId != null ? String(r.designationId) : undefined,
     baseSalary: r.baseSalary,
     salaryType: r.salaryType === 'DAILY' ? 'DAILY' : 'MONTHLY',
     avatarInitials: initials(r.name),
@@ -25,6 +28,9 @@ function toEmployee(r: any): Employee {
 export interface EmployeeInput {
   name: string;
   role: string;
+  department?: string;
+  departmentId?: string;
+  designationId?: string;
   baseSalary: number;
   salaryType: 'MONTHLY' | 'DAILY';
   joinDate: string;
@@ -44,13 +50,22 @@ export async function getEmployee(id: string): Promise<Employee> {
   return toEmployee(await api.get(`/employees/${id}`));
 }
 
+// ponytail: backend departmentId/designationId are Long — send numbers, not the string ids we hold in UI state.
+function toPayload<T extends EmployeeInput>(input: T) {
+  return {
+    ...input,
+    departmentId: input.departmentId != null ? Number(input.departmentId) : undefined,
+    designationId: input.designationId != null ? Number(input.designationId) : undefined,
+  };
+}
+
 export async function createEmployee(input: EmployeeInput): Promise<Employee> {
-  const data = await api.post('/employees', input);
+  const data = await api.post('/employees', toPayload(input));
   return toEmployee(data);
 }
 
 export async function updateEmployee(id: string, input: EmployeeInput & { status: 'ACTIVE' | 'INACTIVE' }): Promise<Employee> {
-  const data = await api.put(`/employees/${id}`, input);
+  const data = await api.put(`/employees/${id}`, toPayload(input));
   return toEmployee(data);
 }
 

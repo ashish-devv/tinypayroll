@@ -1,8 +1,12 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 
-// ponytail: dev-only host resolution — Android emulator can't see "localhost" on the host machine.
-const BASE_URL = Platform.OS === 'android' ? 'http://10.0.2.2:8080/api/v1' : 'http://localhost:8080/api/v1';
+// ponytail: base URL resolution.
+// - EXPO_PUBLIC_API_URL wins when set (e.g. the deployed Render backend) — set it in .env.
+// - Otherwise fall back to local dev: Android emulator can't see "localhost" on the host, so use 10.0.2.2.
+export const BASE_URL =
+  process.env.EXPO_PUBLIC_API_URL ??
+  (Platform.OS === 'android' ? 'http://10.0.2.2:8080/api/v1' : 'http://localhost:8080/api/v1');
 
 const ACCESS_KEY = 'tp_access_token';
 const REFRESH_KEY = 'tp_refresh_token';

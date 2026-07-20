@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Payroll Runs - Payroll Pro</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.5);
+        }
+        .scroll-hide::-webkit-scrollbar {
+            display: none;
+        }
+        @keyframes subtle-float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-4px); }
+            100% { transform: translateY(0px); }
+        }
+        .animate-float {
+            animation: subtle-float 4s ease-in-out infinite;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed": "#001e2f",
+                        "secondary-fixed": "#c9e6ff",
+                        "surface-dim": "#dbd8e4",
+                        "primary-fixed": "#e1e0ff",
+                        "on-tertiary-fixed-variant": "#891933",
+                        "inverse-surface": "#303038",
+                        "secondary-fixed-dim": "#89ceff",
+                        "error-container": "#ffdad6",
+                        "tertiary-fixed": "#ffdadc",
+                        "surface-container": "#efecf8",
+                        "surface-container-lowest": "#ffffff",
+                        "tertiary": "#a63047",
+                        "surface-container-high": "#e9e6f3",
+                        "on-tertiary-fixed": "#400010",
+                        "on-surface": "#1b1b23",
+                        "surface-container-low": "#f5f2fe",
+                        "on-background": "#1b1b23",
+                        "on-secondary": "#ffffff",
+                        "primary-container": "#6063ee",
+                        "on-tertiary-container": "#fffbff",
+                        "error": "#ba1a1a",
+                        "on-secondary-fixed-variant": "#004c6e",
+                        "on-error": "#ffffff",
+                        "surface": "#fcf8ff",
+                        "surface-variant": "#e4e1ed",
+                        "outline": "#767586",
+                        "background": "#fcf8ff",
+                        "on-primary-fixed-variant": "#2f2ebe",
+                        "on-tertiary": "#ffffff",
+                        "inverse-primary": "#c0c1ff",
+                        "primary-fixed-dim": "#c0c1ff",
+                        "on-secondary-container": "#004666",
+                        "on-error-container": "#93000a",
+                        "surface-container-highest": "#e4e1ed",
+                        "secondary": "#006591",
+                        "surface-bright": "#fcf8ff",
+                        "tertiary-container": "#c6495e",
+                        "on-surface-variant": "#464554",
+                        "secondary-container": "#39b8fd",
+                        "on-primary-container": "#fffbff",
+                        "outline-variant": "#c7c4d7",
+                        "surface-tint": "#494bd6",
+                        "tertiary-fixed-dim": "#ffb2b9",
+                        "on-primary": "#ffffff",
+                        "primary": "#4648d4",
+                        "inverse-on-surface": "#f2effb",
+                        "on-primary-fixed": "#07006c"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "16px",
+                        "lg": "40px",
+                        "base": "4px",
+                        "md": "24px",
+                        "gutter": "16px",
+                        "xs": "8px",
+                        "container-padding": "20px",
+                        "xl": "64px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Plus Jakarta Sans"],
+                        "headline-lg-mobile": ["Plus Jakarta Sans"],
+                        "data-lg": ["JetBrains Mono"],
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"],
+                        "data-md": ["JetBrains Mono"],
+                        "display-lg": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-lg-mobile": ["24px", {"lineHeight": "32px", "fontWeight": "700"}],
+                        "data-lg": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+                        "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                        "headline-lg": ["32px", {"lineHeight": "40px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-md": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "data-md": ["14px", {"lineHeight": "20px", "fontWeight": "500"}],
+                        "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "800"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background font-body-md min-h-screen pb-32 overflow-x-hidden">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-surface/70 backdrop-blur-xl border-b border-outline-variant/30 shadow-sm h-16 flex justify-between items-center px-gutter">
+<div class="flex items-center gap-xs">
+<div class="w-8 h-8 rounded-full overflow-hidden border border-primary/20">
+<img class="w-full h-full object-cover" data-alt="A professional studio headshot of a friendly business executive in a high-key office environment. The lighting is soft and warm, highlighting the approachable and premium nature of the fintech brand. The aesthetic is clean, modern, and aligned with a sophisticated corporate identity." src="https://lh3.googleusercontent.com/aida-public/AB6AXuC_4FpxEhS1whnmxAkxc5d6aTxHccDPH2cwIweWJemsE1WWok9SdNvKaSZQ8U7DAuAgzA_vXG83I3ONUaLBBR4nf_QnhouxIEreAgN0aQhBnKlUDf1HeHZL64mO_qHsD-pvCUYogmAtqaV1vmYa8S_AYrJYRPEHcAfbW3Wgx6u0bpFnydCCXGVjOjDHpjrXJFxKlK0US4u-PXMuUroiJ7TNl_mAB7XwPsE3e1It4EHDiCRz5u2VXUZY"/>
+</div>
+<span class="font-headline-md text-headline-md font-bold text-primary">Payroll Pro</span>
+</div>
+<button class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-container-high/50 transition-colors">
+<span class="material-symbols-outlined text-primary">notifications</span>
+</button>
+</header>
+<main class="pt-20 px-container-padding max-w-lg mx-auto">
+<!-- Section Header -->
+<div class="mb-md">
+<h1 class="font-headline-lg-mobile text-headline-lg-mobile text-on-surface mb-1">Payroll Runs</h1>
+<p class="font-body-md text-on-surface-variant">Manage and track your cycles.</p>
+</div>
+<!-- Current Run - Highlighted -->
+<section class="mb-lg">
+<div class="relative overflow-hidden rounded-[24px] bg-primary text-on-primary p-md shadow-2xl transition-transform active:scale-95 duration-150">
+<!-- Abstract background pattern -->
+<div class="absolute -right-12 -top-12 w-48 h-48 bg-white/10 rounded-full blur-3xl"></div>
+<div class="absolute -left-12 -bottom-12 w-32 h-32 bg-primary-container/20 rounded-full blur-2xl"></div>
+<div class="relative z-10 flex flex-col gap-sm">
+<div class="flex justify-between items-start">
+<div>
+<span class="font-label-sm text-label-sm uppercase tracking-wider opacity-80">Current Cycle</span>
+<h2 class="font-headline-md text-headline-md font-bold mt-1">October 2023</h2>
+</div>
+<div class="bg-on-tertiary-container text-tertiary px-3 py-1 rounded-full flex items-center gap-1 shadow-sm">
+<span class="material-symbols-outlined text-[16px]" style="font-variation-settings: 'FILL' 1;">error</span>
+<span class="font-label-sm text-label-sm">Review Needed</span>
+</div>
+</div>
+<div class="mt-xs">
+<div class="flex justify-between items-baseline mb-1">
+<span class="font-data-lg text-data-lg">$42,850.24</span>
+<span class="font-label-sm text-label-sm opacity-80">14 Employees</span>
+</div>
+<div class="w-full h-1.5 bg-white/20 rounded-full overflow-hidden">
+<div class="h-full bg-white w-[85%] rounded-full"></div>
+</div>
+<p class="font-label-sm text-label-sm mt-2 opacity-80">Due in 2 days — Oct 31, 2023</p>
+</div>
+<button class="mt-2 w-full py-3 bg-white text-primary font-label-sm rounded-full shadow-lg hover:bg-surface-bright transition-all active:scale-95">
+                        Complete Payroll Run
+                    </button>
+</div>
+</div>
+</section>
+<!-- Past Runs List -->
+<section>
+<div class="flex justify-between items-center mb-sm">
+<h3 class="font-headline-md text-headline-md text-on-surface">History</h3>
+<button class="text-primary font-label-sm flex items-center gap-1">
+                    Filter <span class="material-symbols-outlined text-[18px]">filter_list</span>
+</button>
+</div>
+<div class="flex flex-col gap-sm">
+<!-- Past Run Card 1 -->
+<div class="glass-card rounded-xl p-sm flex items-center justify-between hover:border-primary/30 transition-all cursor-pointer group shadow-sm">
+<div class="flex items-center gap-sm">
+<div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<h4 class="font-body-md font-semibold text-on-surface">September 2023</h4>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Paid Sep 30 • Direct Deposit</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-data-md text-data-md text-on-surface">$38,922.10</p>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+</div>
+<!-- Past Run Card 2 -->
+<div class="glass-card rounded-xl p-sm flex items-center justify-between hover:border-primary/30 transition-all cursor-pointer group shadow-sm">
+<div class="flex items-center gap-sm">
+<div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<h4 class="font-body-md font-semibold text-on-surface">August 2023</h4>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Paid Aug 31 • Direct Deposit</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-data-md text-data-md text-on-surface">$39,150.40</p>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+</div>
+<!-- Past Run Card 3 -->
+<div class="glass-card rounded-xl p-sm flex items-center justify-between hover:border-primary/30 transition-all cursor-pointer group shadow-sm">
+<div class="flex items-center gap-sm">
+<div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+</div>
+<div>
+<h4 class="font-body-md font-semibold text-on-surface">July 2023</h4>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Paid Jul 31 • Direct Deposit</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-data-md text-data-md text-on-surface">$37,280.00</p>
+<span class="material-symbols-outlined text-outline-variant group-hover:text-primary transition-colors">chevron_right</span>
+</div>
+</div>
+<!-- Past Run Card 4 - Adjustment -->
+<div class="glass-card rounded-xl p-sm flex items-center justify-between border-l-4 border-l-secondary shadow-sm">
+<div class="flex items-center gap-sm">
+<div class="w-12 h-12 rounded-xl bg-secondary-fixed text-secondary flex items-center justify-center">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">history_edu</span>
+</div>
+<div>
+<h4 class="font-body-md font-semibold text-on-surface">Off-cycle Adjustment</h4>
+<p class="font-label-sm text-label-sm text-on-surface-variant">Paid Jul 15 • Manual Check</p>
+</div>
+</div>
+<div class="text-right">
+<p class="font-data-md text-data-md text-on-surface">$1,200.00</p>
+<span class="material-symbols-outlined text-outline-variant">chevron_right</span>
+</div>
+</div>
+</div>
+<!-- View More Button -->
+<button class="mt-md w-full py-4 flex items-center justify-center gap-2 text-on-surface-variant font-label-sm border border-outline-variant/30 rounded-xl hover:bg-surface-container-high transition-colors">
+                Load full history
+                <span class="material-symbols-outlined text-[18px]">expand_more</span>
+</button>
+</section>
+<!-- Empty state spacer -->
+<div class="h-12"></div>
+</main>
+<!-- FAB Contextual (Only for relevant actions) -->
+<button class="fixed bottom-24 right-6 w-14 h-14 bg-primary text-on-primary rounded-2xl shadow-xl flex items-center justify-center animate-float z-40 transition-transform active:scale-90 duration-150">
+<span class="material-symbols-outlined text-[28px]">add</span>
+</button>
+<!-- Bottom Nav Bar -->
+<nav class="fixed bottom-6 left-0 right-0 z-50 flex justify-around items-center px-4 py-2 max-w-md mx-auto bg-surface/80 backdrop-blur-lg shadow-2xl border border-outline-variant/20 rounded-full w-[90%]">
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-2 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">dashboard</span>
+<span class="font-label-sm text-label-sm mt-1">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-2 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">groups</span>
+<span class="font-label-sm text-label-sm mt-1">Staff</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-2 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">event_available</span>
+<span class="font-label-sm text-label-sm mt-1">Time</span>
+</a>
+<a class="flex flex-col items-center justify-center bg-primary-container text-on-primary-container rounded-full px-4 py-2 scale-90" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">payments</span>
+<span class="font-label-sm text-label-sm mt-1">Pay</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant px-4 py-2 hover:text-primary transition-all" href="#">
+<span class="material-symbols-outlined">analytics</span>
+<span class="font-label-sm text-label-sm mt-1">Data</span>
+</a>
+</nav>
+<script>
+        // Simple ripple/active state for cards
+        document.querySelectorAll('.glass-card').forEach(card => {
+            card.addEventListener('mousedown', () => {
+                card.classList.add('scale-98', 'shadow-inner');
+            });
+            card.addEventListener('mouseup', () => {
+                card.classList.remove('scale-98', 'shadow-inner');
+            });
+            card.addEventListener('mouseleave', () => {
+                card.classList.remove('scale-98', 'shadow-inner');
+            });
+        });
+
+        // Sticky header opacity on scroll
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('header');
+            if (window.scrollY > 20) {
+                header.classList.add('shadow-md');
+            } else {
+                header.classList.remove('shadow-md');
+            }
+        });
+    </script>
+</body></html>

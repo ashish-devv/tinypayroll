@@ -43,6 +43,14 @@ public class Employee extends BaseEntity {
     @Column(nullable = false)
     private String role;
 
+    /** Denormalized name (authoritative for payslips/reports); catalog link is a soft FK below. */
+    private String department;
+
+    /** Soft links to the catalog — not enforced relations; the name strings stay authoritative. */
+    private Long departmentId;
+
+    private Long designationId;
+
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal baseSalary;
 

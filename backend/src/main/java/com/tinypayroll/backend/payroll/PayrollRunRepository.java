@@ -7,11 +7,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PayrollRunRepository extends JpaRepository<PayrollRun, Long> {
 
-    Optional<PayrollRun> findByIdAndBusinessId(Long id, Long businessId);
+    Optional<PayrollRun> findByIdAndBusinessIdAndDeletedAtIsNull(Long id, Long businessId);
 
-    Optional<PayrollRun> findByBusinessIdAndMonthAndYear(Long businessId, int month, int year);
+    Optional<PayrollRun> findByBusinessIdAndMonthAndYearAndDeletedAtIsNull(Long businessId, int month, int year);
 
-    List<PayrollRun> findByBusinessIdOrderByYearDescMonthDesc(Long businessId);
+    List<PayrollRun> findByBusinessIdAndDeletedAtIsNullOrderByYearDescMonthDesc(Long businessId);
 
-    List<PayrollRun> findByBusinessIdAndRunDateBetweenOrderByRunDate(Long businessId, LocalDate from, LocalDate to);
+    List<PayrollRun> findByBusinessIdAndRunDateBetweenAndDeletedAtIsNullOrderByRunDate(Long businessId, LocalDate from, LocalDate to);
 }

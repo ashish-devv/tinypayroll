@@ -1,39 +1,41 @@
+import '../global.css';
+
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { TamaguiProvider } from 'tamagui';
 import { useFonts } from 'expo-font';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  Inter_400Regular,
-  Inter_500Medium,
-  Inter_600SemiBold,
-  Inter_700Bold,
-} from '@expo-google-fonts/inter';
-import { Geist_500Medium } from '@expo-google-fonts/geist';
+import { Roboto_400Regular } from '@expo-google-fonts/roboto/400Regular';
+import { Roboto_500Medium } from '@expo-google-fonts/roboto/500Medium';
+import { Roboto_600SemiBold } from '@expo-google-fonts/roboto/600SemiBold';
+import { Roboto_700Bold } from '@expo-google-fonts/roboto/700Bold';
+import { Roboto_800ExtraBold } from '@expo-google-fonts/roboto/800ExtraBold';
+import { JetBrainsMono_500Medium } from '@expo-google-fonts/jetbrains-mono';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
-import { Pressable, useColorScheme } from 'react-native';
+import { Pressable } from 'react-native';
+import { useColorScheme } from 'nativewind';
 
-import tamaguiConfig from '@/tamagui.config';
 import { AuthProvider, useAuth } from '@/src/services/auth';
+import { ThemeProvider as AppThemeProvider } from '@/src/services/theme';
 
 SplashScreen.preventAutoHideAsync();
 
 function RootNavigator() {
-  const dark = useColorScheme() === 'dark';
+  const dark = useColorScheme().colorScheme === 'dark';
   const { isAuthenticated, hasOnboarded, isBooting } = useAuth();
-  const headerBg   = dark ? '#161a24' : '#ffffff';
-  const headerText = dark ? '#e8eaf0' : '#0b1c30';
-  const headerBorder = dark ? '#2a2f3e' : '#e0e3ea';
+  const headerBg   = dark ? '#1e293b' : '#ffffff';
+  const headerText = dark ? '#f1f5f9' : '#0f172a';
+  const headerBorder = dark ? '#334155' : '#e2e8f0';
 
   if (isBooting) return null;
 
   const headerOpts = {
     headerStyle: { backgroundColor: headerBg },
     headerTintColor: headerText,
-    headerTitleStyle: { fontFamily: 'Inter_600SemiBold', fontSize: 17 } as const,
+    headerTitleStyle: { fontFamily: 'Roboto_600SemiBold', fontSize: 17 } as const,
     headerShadowVisible: false,
     headerBorderBottomColor: headerBorder, // iOS
   };
@@ -57,6 +59,7 @@ function RootNavigator() {
         <Stack.Screen name="payroll/payslips" options={{ title: 'Payslips', ...headerOpts }} />
         <Stack.Screen name="payroll/payslip" options={{ title: 'Payslip', ...headerOpts }} />
         <Stack.Screen name="settings/business" options={{ title: 'Business Configuration', ...headerOpts, headerLeft: backHeaderLeft }} />
+        <Stack.Screen name="settings/catalog" options={{ title: 'Departments & Roles', ...headerOpts, headerLeft: backHeaderLeft }} />
       </Stack.Protected>
       <Stack.Protected guard={!isAuthenticated && !hasOnboarded}>
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />
@@ -71,31 +74,34 @@ function RootNavigator() {
 
 export default function RootLayout() {
   const [fontsLoaded] = useFonts({
-    Inter_400Regular,
-    Inter_500Medium,
-    Inter_600SemiBold,
-    Inter_700Bold,
-    Geist_500Medium,
+    Roboto_400Regular,
+    Roboto_500Medium,
+    Roboto_600SemiBold,
+    Roboto_700Bold,
+    Roboto_800ExtraBold,
+    JetBrainsMono_500Medium,
   });
 
   useEffect(() => {
     if (fontsLoaded) SplashScreen.hideAsync();
   }, [fontsLoaded]);
 
-  const dark = useColorScheme() === 'dark';
+  const dark = useColorScheme().colorScheme === 'dark';
 
   if (!fontsLoaded) return null;
 
   return (
-    <SafeAreaProvider>
-      <TamaguiProvider config={tamaguiConfig} defaultTheme="light">
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
         <ThemeProvider value={dark ? DarkTheme : DefaultTheme}>
-          <AuthProvider>
-            <RootNavigator />
-          </AuthProvider>
-          <StatusBar style={dark ? 'light' : 'dark'} />
+          <AppThemeProvider>
+            <AuthProvider>
+              <RootNavigator />
+            </AuthProvider>
+            <StatusBar style={dark ? 'light' : 'dark'} />
+          </AppThemeProvider>
         </ThemeProvider>
-      </TamaguiProvider>
-    </SafeAreaProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

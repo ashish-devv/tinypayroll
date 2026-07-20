@@ -29,7 +29,7 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public ExpenseSummaryResponse expenseSummary(Long businessId, LocalDate from, LocalDate to) {
-        List<PayrollRun> runs = payrollRunRepository.findByBusinessIdAndRunDateBetweenOrderByRunDate(businessId, from, to);
+        List<PayrollRun> runs = payrollRunRepository.findByBusinessIdAndRunDateBetweenAndDeletedAtIsNullOrderByRunDate(businessId, from, to);
         List<PeriodExpense> periods = runs.stream()
                 .map(run -> new PeriodExpense(run.getPeriod(), run.getRunDate(), run.getTotalAmount(), run.getStatus().name()))
                 .toList();
@@ -45,7 +45,7 @@ public class ReportService {
     /** Payroll-run expense CSV — one row per period. */
     @Transactional(readOnly = true)
     public String expenseSummaryCsv(Long businessId, LocalDate from, LocalDate to) {
-        List<PayrollRun> runs = payrollRunRepository.findByBusinessIdAndRunDateBetweenOrderByRunDate(businessId, from, to);
+        List<PayrollRun> runs = payrollRunRepository.findByBusinessIdAndRunDateBetweenAndDeletedAtIsNullOrderByRunDate(businessId, from, to);
         StringBuilder csv = new StringBuilder("period,runDate,status,totalAmount\n");
         for (PayrollRun run : runs) {
             csv.append(run.getPeriod())

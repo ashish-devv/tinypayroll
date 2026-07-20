@@ -1,11 +1,6 @@
-import { Platform } from 'react-native';
 import { File, Paths } from 'expo-file-system';
-import { api, getTokens } from '@/src/services/api';
+import { api, getTokens, BASE_URL } from '@/src/services/api';
 import type { PayrollRun, PayrollRunItem, PayrollStatus } from '@/src/types';
-
-// ponytail: mirrors api.ts's dev-only host resolution — payslip PDF is a binary download,
-// not something apiFetch (which always calls res.json()) can handle.
-const BASE_URL = Platform.OS === 'android' ? 'http://10.0.2.2:8080/api/v1' : 'http://localhost:8080/api/v1';
 
 const MONTHS = ['', 'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'];
@@ -55,6 +50,10 @@ export async function createPayrollRun(month: number, year: number): Promise<Pay
 
 export async function finalizePayrollRun(id: string): Promise<PayrollRun> {
   return toRun(await api.post(`/payroll-runs/${id}/finalize`));
+}
+
+export async function deletePayrollRun(id: string): Promise<void> {
+  await api.delete(`/payroll-runs/${id}`);
 }
 
 // ponytail: expo-file-system's File/Directory API is native-only (no web support), so web triggers

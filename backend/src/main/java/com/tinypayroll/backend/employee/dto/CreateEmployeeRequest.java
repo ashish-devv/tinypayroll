@@ -12,6 +12,9 @@ import java.time.LocalDate;
 public record CreateEmployeeRequest(
         @NotBlank @Size(max = 100) String name,
         @NotBlank @Size(max = 100) String role,
+        @Size(max = 100) String department,
+        Long departmentId,
+        Long designationId,
         @NotNull @DecimalMin(value = "0.0", inclusive = true) BigDecimal baseSalary,
         @NotNull SalaryType salaryType,
         String avatarUrl,

@@ -1,9 +1,8 @@
-import { ScrollView, YStack, XStack, Text, Input, Separator, Spinner } from 'tamagui';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollView, View, Pressable, TextInput, Switch, KeyboardAvoidingView, Platform, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, useColorScheme, Switch } from 'react-native';
 import { useEffect, useState } from 'react';
 
+import { Screen, Card, AppText, Divider, usePalette, useShadows } from '@/src/components/ui';
 import { getBusiness, updateBusiness } from '@/src/services/business';
 import { useAuth } from '@/src/services/auth';
 import { ApiError } from '@/src/services/api';
@@ -12,111 +11,71 @@ import { ApiError } from '@/src/services/api';
 // so the user sees the error as soon as they finish typing, instead of only after Save round-trips.
 const GSTIN_PATTERN = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
 
-function useC() {
-  const dark = useColorScheme() === 'dark';
-  return {
-    bg:          dark ? '#0d0f14' : '#f8f9ff',
-    surface:     dark ? '#161a24' : '#ffffff',
-    surfaceLow:  dark ? '#1e2235' : '#eff4ff',
-    text:        dark ? '#e8eaf0' : '#0b1c30',
-    muted:       dark ? '#8b8fa8' : '#45464c',
-    placeholder: dark ? '#555a72' : '#9ba1b0',
-    border:      dark ? '#2a2f3e' : '#e0e3ea',
-    inputBg:     dark ? '#1e2235' : '#f2f4f8',
-    ink:         '#1a1f2c',
-    gold:        '#d4af37',
-    goldBg:      dark ? '#2a2410' : '#fdf6d8',
-    danger:      '#dc2626',
-    dangerBg:    dark ? '#2d1414' : '#fef2f2',
-    cardShadow: {
-      shadowColor: dark ? '#000000' : '#1a1f2c',
-      shadowOpacity: dark ? 0.28 : 0.07,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: dark ? 5 : 2,
-    } as const,
-    heroShadow: {
-      shadowColor: '#d4af37',
-      shadowOpacity: dark ? 0.28 : 0.2,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 6 },
-      elevation: dark ? 10 : 6,
-    } as const,
-  };
-}
-
-function SectionLabel({ label, C }: { label: string; C: ReturnType<typeof useC> }) {
+function SectionLabel({ label }: { label: string }) {
   return (
-    <Text fontSize={11} fontFamily="$body" fontWeight="600" letterSpacing={0.8}
-          color={C.placeholder} textTransform="uppercase" paddingBottom={4}>
+    <AppText className="pb-1 font-inter-semibold text-[11px] uppercase tracking-[0.8px] text-placeholder-light dark:text-placeholder-dark">
       {label}
-    </Text>
+    </AppText>
   );
 }
 
-function FieldRow({ label, value, placeholder, onChangeText, onBlur, errorText, C }: {
+function FieldRow({ label, value, placeholder, onChangeText, onBlur, errorText }: {
   label: string;
   value: string;
   placeholder?: string;
   onChangeText?: (v: string) => void;
   onBlur?: () => void;
   errorText?: string;
-  C: ReturnType<typeof useC>;
 }) {
+  const P = usePalette();
   return (
-    <YStack gap={6}>
-      <Text fontSize={13} fontFamily="$body" fontWeight="500" color={C.muted}>{label}</Text>
-      <Input
+    <View className="gap-1.5">
+      <AppText className="font-inter-medium text-[13px] text-muted-light dark:text-muted-dark">{label}</AppText>
+      <TextInput
         value={value}
         placeholder={placeholder ?? label}
         onChangeText={onChangeText}
         onBlur={onBlur}
-        backgroundColor={C.inputBg}
-        borderWidth={1}
-        borderColor={errorText ? C.danger : C.border}
-        borderRadius={10}
-        paddingHorizontal={14}
-        height={44}
-        fontSize={14}
-        fontFamily="$body"
-        color={C.text}
-        placeholderTextColor={C.placeholder}
+        placeholderTextColor={P.placeholder}
+        className={`h-11 rounded-input border bg-surface-low-light px-3.5 text-sm text-text-light dark:bg-surface-low-dark dark:text-text-dark ${errorText ? 'border-rose-400' : 'border-border-light dark:border-border-dark'}`}
+        style={{ fontFamily: 'Inter_400Regular' }}
       />
       {errorText && (
-        <XStack alignItems="center" gap={5}>
-          <Ionicons name="alert-circle" size={13} color={C.danger} />
-          <Text fontSize={12} fontFamily="$body" color={C.danger}>{errorText}</Text>
-        </XStack>
+        <View className="flex-row items-center gap-[5px]">
+          <Ionicons name="alert-circle" size={13} color="#e11d48" />
+          <AppText className="text-xs text-rose-600 dark:text-rose-300">{errorText}</AppText>
+        </View>
       )}
-    </YStack>
+    </View>
   );
 }
 
-function ToggleRow({ label, desc, value, onValueChange, C }: {
+function ToggleRow({ label, desc, value, onValueChange }: {
   label: string;
   desc?: string;
   value: boolean;
   onValueChange: (v: boolean) => void;
-  C: ReturnType<typeof useC>;
 }) {
+  const P = usePalette();
   return (
-    <XStack alignItems="center" justifyContent="space-between" paddingVertical={4}>
-      <YStack flex={1} gap={2} paddingRight={12}>
-        <Text fontSize={14} fontFamily="$body" fontWeight="500" color={C.text}>{label}</Text>
-        {desc && <Text fontSize={12} fontFamily="$body" color={C.muted}>{desc}</Text>}
-      </YStack>
+    <View className="flex-row items-center justify-between py-1">
+      <View className="flex-1 gap-0.5 pr-3">
+        <AppText className="font-inter-medium text-sm">{label}</AppText>
+        {desc && <AppText className="text-xs text-muted-light dark:text-muted-dark">{desc}</AppText>}
+      </View>
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: C.border, true: C.ink }}
+        trackColor={{ false: P.border, true: P.primary }}
         thumbColor="white"
       />
-    </XStack>
+    </View>
   );
 }
 
 export default function BusinessConfigScreen() {
-  const C = useC();
+  const P = usePalette();
+  const shadows = useShadows();
   const { signOut } = useAuth();
 
   const [companyName, setCompanyName] = useState('');
@@ -204,140 +163,131 @@ export default function BusinessConfigScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }} edges={['bottom']}>
-        <YStack flex={1} alignItems="center" justifyContent="center"><Spinner color={C.gold} /></YStack>
-      </SafeAreaView>
+      <Screen variant="surface" edges={['bottom']}>
+        <View className="flex-1 items-center justify-center"><ActivityIndicator color={P.primary} /></View>
+      </Screen>
     );
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }} edges={['bottom']}>
-      <ScrollView backgroundColor={C.bg} showsVerticalScrollIndicator={false}>
-        <YStack paddingHorizontal={20} paddingTop={24} paddingBottom={40} gap={24}>
+    <Screen variant="surface" edges={['bottom']}>
+      {/* ponytail: android keyboard covers inputs without adjustResize (broken by edge-to-edge) */}
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+      <ScrollView className="bg-canvas-light dark:bg-canvas-dark" showsVerticalScrollIndicator={false}>
+        <View className="gap-6 px-5 pb-10 pt-6">
 
           {/* ── Company profile ── */}
-          <YStack gap={14}>
-            <SectionLabel label="Company Profile" C={C} />
-            <YStack backgroundColor={C.surface} borderRadius={14} borderWidth={1}
-                    borderColor={C.border} padding={18} gap={14} style={C.cardShadow}>
+          <View className="gap-3.5">
+            <SectionLabel label="Company Profile" />
+            <Card className="gap-3.5 p-[18px]">
 
               {/* Logo placeholder */}
-              <XStack alignItems="center" gap={14}>
-                <YStack width={56} height={56} borderRadius={14} backgroundColor={C.ink}
-                        alignItems="center" justifyContent="center">
-                  <Text fontSize={18} fontFamily="$body" fontWeight="700" color="white">TP</Text>
-                </YStack>
-                <YStack flex={1} gap={4}>
-                  <Text fontSize={14} fontFamily="$body" fontWeight="600" color={C.text}>
+              <View className="flex-row items-center gap-3.5">
+                <View className="h-14 w-14 items-center justify-center rounded-card bg-primary">
+                  <AppText className="font-inter-bold text-lg text-white">TP</AppText>
+                </View>
+                <View className="flex-1 gap-1">
+                  <AppText className="font-inter-semibold text-sm">
                     {companyName}
-                  </Text>
+                  </AppText>
                   <Pressable>
-                    <Text fontSize={12} fontFamily="$body" color={C.gold}>Change logo</Text>
+                    <AppText className="text-xs text-primary">Change logo</AppText>
                   </Pressable>
-                </YStack>
-              </XStack>
+                </View>
+              </View>
 
-              <Separator borderColor={C.border} />
+              <Divider />
 
               <FieldRow label="Company Name" value={companyName} onChangeText={fieldSetter('companyName', setCompanyName)}
-                        errorText={fieldErrors.companyName} C={C} />
+                        errorText={fieldErrors.companyName} />
               <FieldRow label="Industry / Type" value={industry} onChangeText={fieldSetter('industry', setIndustry)}
-                        errorText={fieldErrors.industry} C={C} />
+                        errorText={fieldErrors.industry} />
               <FieldRow label="GSTIN" value={gstin} onChangeText={fieldSetter('gstin', setGstin)}
-                        onBlur={handleGstinBlur} placeholder="22AAAAA0000A1Z5" errorText={fieldErrors.gstin} C={C} />
+                        onBlur={handleGstinBlur} placeholder="22AAAAA0000A1Z5" errorText={fieldErrors.gstin} />
               <FieldRow label="Address" value={address} onChangeText={fieldSetter('address', setAddress)}
-                        errorText={fieldErrors.address} C={C} />
-            </YStack>
-          </YStack>
+                        errorText={fieldErrors.address} />
+            </Card>
+          </View>
 
           {/* ── Contact info ── */}
-          <YStack gap={14}>
-            <SectionLabel label="Contact Information" C={C} />
-            <YStack backgroundColor={C.surface} borderRadius={14} borderWidth={1}
-                    borderColor={C.border} padding={18} gap={14} style={C.cardShadow}>
+          <View className="gap-3.5">
+            <SectionLabel label="Contact Information" />
+            <Card className="gap-3.5 p-[18px]">
               <FieldRow label="Email" value={email} onChangeText={fieldSetter('email', setEmail)}
-                        placeholder="you@company.com" errorText={fieldErrors.email} C={C} />
+                        placeholder="you@company.com" errorText={fieldErrors.email} />
               <FieldRow label="Phone" value={phone} onChangeText={fieldSetter('phone', setPhone)}
-                        placeholder="+91 XXXXX XXXXX" errorText={fieldErrors.phone} C={C} />
-            </YStack>
-          </YStack>
+                        placeholder="+91 XXXXX XXXXX" errorText={fieldErrors.phone} />
+            </Card>
+          </View>
 
           {/* ── Payroll settings ── */}
-          <YStack gap={14}>
-            <SectionLabel label="Payroll Settings" C={C} />
-            <YStack backgroundColor={C.surface} borderRadius={14} borderWidth={1}
-                    borderColor={C.border} padding={18} gap={14} style={C.cardShadow}>
+          <View className="gap-3.5">
+            <SectionLabel label="Payroll Settings" />
+            <Card className="gap-3.5 p-[18px]">
               <FieldRow label="Pay Day (day of month)" value={payDay} onChangeText={fieldSetter('payDay', setPayDay)}
-                        placeholder="1" errorText={fieldErrors.payDay} C={C} />
+                        placeholder="1" errorText={fieldErrors.payDay} />
               <FieldRow label="Working Days / Month" value={workingDays} onChangeText={fieldSetter('workingDaysPerMonth', setWorkingDays)}
-                        placeholder="26" errorText={fieldErrors.workingDaysPerMonth} C={C} />
+                        placeholder="26" errorText={fieldErrors.workingDaysPerMonth} />
               <FieldRow label="Overtime Rate (×)" value={otRate} onChangeText={fieldSetter('otRate', setOtRate)}
-                        placeholder="1.5" errorText={fieldErrors.otRate} C={C} />
+                        placeholder="1.5" errorText={fieldErrors.otRate} />
 
-              <Separator borderColor={C.border} />
+              <Divider />
 
               <ToggleRow
                 label="Auto Payment Reminders"
                 desc="Get notified 3 days before pay day"
                 value={autoReminders}
                 onValueChange={setAutoReminders}
-                C={C}
               />
               <ToggleRow
                 label="WhatsApp Payslip Delivery"
                 desc="Send payslips to employees on WhatsApp"
                 value={whatsappPayslip}
                 onValueChange={setWhatsappPayslip}
-                C={C}
               />
-            </YStack>
-          </YStack>
+            </Card>
+          </View>
 
           {/* ── Account ── */}
-          <YStack gap={14}>
-            <SectionLabel label="Account" C={C} />
+          <View className="gap-3.5">
+            <SectionLabel label="Account" />
             <Pressable onPress={signOut}>
-              <XStack backgroundColor={C.surface} borderRadius={14} borderWidth={1}
-                      borderColor={C.border} padding={18} alignItems="center" gap={12} style={C.cardShadow}>
-                <YStack width={36} height={36} borderRadius={18}
-                        backgroundColor={C.surfaceLow} alignItems="center" justifyContent="center">
-                  <Ionicons name="log-out-outline" size={16} color={C.text} />
-                </YStack>
-                <Text fontSize={13} fontFamily="$body" fontWeight="600" color={C.text}>Log Out</Text>
-              </XStack>
+              <Card className="flex-row items-center gap-3 p-[18px]">
+                <View className="h-9 w-9 items-center justify-center rounded-full bg-surface-low-light dark:bg-surface-low-dark">
+                  <Ionicons name="log-out-outline" size={16} color={P.text} />
+                </View>
+                <AppText className="font-inter-semibold text-[13px]">Log Out</AppText>
+              </Card>
             </Pressable>
-          </YStack>
+          </View>
 
           {/* ── Danger zone ── */}
-          <YStack gap={14}>
-            <SectionLabel label="Danger Zone" C={C} />
-            <YStack backgroundColor={C.surface} borderRadius={14} borderWidth={1}
-                    borderColor={C.dangerBg} padding={18} gap={12}>
+          <View className="gap-3.5">
+            <SectionLabel label="Danger Zone" />
+            <View className="gap-3 rounded-card border border-rose-100 bg-surface-light p-[18px] dark:border-rose-500/20 dark:bg-surface-dark">
               <Pressable>
-                <XStack alignItems="center" gap={12}>
-                  <YStack width={36} height={36} borderRadius={18}
-                          backgroundColor={C.dangerBg} alignItems="center" justifyContent="center">
-                    <Ionicons name="trash-outline" size={16} color={C.danger} />
-                  </YStack>
-                  <YStack flex={1} gap={2}>
-                    <Text fontSize={13} fontFamily="$body" fontWeight="600" color={C.danger}>
+                <View className="flex-row items-center gap-3">
+                  <View className="h-9 w-9 items-center justify-center rounded-full bg-rose-50 dark:bg-rose-500/10">
+                    <Ionicons name="trash-outline" size={16} color="#e11d48" />
+                  </View>
+                  <View className="flex-1 gap-0.5">
+                    <AppText className="font-inter-semibold text-[13px] text-rose-600 dark:text-rose-300">
                       Clear All Payroll Data
-                    </Text>
-                    <Text fontSize={12} fontFamily="$body" color={C.muted}>
+                    </AppText>
+                    <AppText className="text-xs text-muted-light dark:text-muted-dark">
                       Permanently deletes all runs and payslips
-                    </Text>
-                  </YStack>
-                </XStack>
+                    </AppText>
+                  </View>
+                </View>
               </Pressable>
-            </YStack>
-          </YStack>
+            </View>
+          </View>
 
           {error && (
-            <XStack backgroundColor={C.dangerBg} borderRadius={12} borderWidth={1} borderColor={C.danger}
-                    padding={12} alignItems="center" gap={10}>
-              <Ionicons name="alert-circle" size={18} color={C.danger} />
-              <Text flex={1} fontSize={13} fontFamily="$body" color={C.danger}>{error}</Text>
-            </XStack>
+            <View className="flex-row items-center gap-2.5 rounded-button border border-rose-300 bg-rose-50 p-3 dark:border-rose-500/40 dark:bg-rose-500/10">
+              <Ionicons name="alert-circle" size={18} color="#e11d48" />
+              <AppText className="flex-1 text-[13px] text-rose-600 dark:text-rose-300">{error}</AppText>
+            </View>
           )}
 
           {/* ── Save button ── */}
@@ -346,24 +296,20 @@ export default function BusinessConfigScreen() {
             disabled={saving}
             style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }], opacity: saving ? 0.6 : 1 })}
           >
-            <XStack
-              backgroundColor={saved ? '#16a34a' : C.ink}
-              borderRadius={14}
-              paddingVertical={16}
-              alignItems="center"
-              justifyContent="center"
-              gap={8}
-              style={C.heroShadow}
+            <View
+              className={`flex-row items-center justify-center gap-2 rounded-card py-4 ${saved ? 'bg-emerald-600' : 'bg-primary'}`}
+              style={shadows.hero}
             >
               <Ionicons name={saved ? 'checkmark-circle' : 'save-outline'} size={18} color="white" />
-              <Text fontSize={15} fontFamily="$body" fontWeight="600" color="white">
+              <AppText className="font-inter-semibold text-[15px] text-white">
                 {saving ? 'Saving…' : saved ? 'Saved!' : 'Save Changes'}
-              </Text>
-            </XStack>
+              </AppText>
+            </View>
           </Pressable>
 
-        </YStack>
+        </View>
       </ScrollView>
-    </SafeAreaView>
+      </KeyboardAvoidingView>
+    </Screen>
   );
 }

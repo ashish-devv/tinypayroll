@@ -1,47 +1,14 @@
-import { ScrollView, YStack, XStack, Text, Separator, Spinner } from 'tamagui';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollView, View, Pressable, ActivityIndicator, Share, Alert, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, useColorScheme, View, Share, Alert, Platform } from 'react-native';
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 
+import { Screen, Card, AppText, Divider, Chip, TopBar, usePalette } from '@/src/components/ui';
 import { getExpenseSummary, exportExpenseCsv, downloadReportPdf, downloadReportPdfWeb } from '@/src/services/reports';
 import { listPayrollRuns } from '@/src/services/payroll';
 import { listEmployees } from '@/src/services/employees';
 import type { Employee, PayrollRun } from '@/src/types';
 import type { ExpenseSummary } from '@/src/services/reports';
-
-function useC() {
-  const dark = useColorScheme() === 'dark';
-  return {
-    bg:          dark ? '#0d0f14' : '#f8f9ff',
-    surface:     dark ? '#161a24' : '#ffffff',
-    surfaceLow:  dark ? '#1e2235' : '#eff4ff',
-    text:        dark ? '#e8eaf0' : '#0b1c30',
-    muted:       dark ? '#8b8fa8' : '#45464c',
-    placeholder: dark ? '#555a72' : '#9ba1b0',
-    border:      dark ? '#2a2f3e' : '#e0e3ea',
-    ink:         '#1a1f2c',
-    gold:        '#d4af37',
-    goldBg:      dark ? '#2a2410' : '#fdf6d8',
-    success:     '#16a34a',
-    successBg:   dark ? '#14301e' : '#f0fdf4',
-    cardShadow: {
-      shadowColor: dark ? '#000000' : '#1a1f2c',
-      shadowOpacity: dark ? 0.28 : 0.07,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: dark ? 5 : 2,
-    } as const,
-    heroShadow: {
-      shadowColor: '#d4af37',
-      shadowOpacity: dark ? 0.28 : 0.2,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 6 },
-      elevation: dark ? 10 : 6,
-    } as const,
-  };
-}
 
 function SpendBar({ value, max, color }: { value: number; max: number; color: string }) {
   const pct = max > 0 ? Math.max(0.04, value / max) : 0.04;
@@ -52,14 +19,14 @@ function SpendBar({ value, max, color }: { value: number; max: number; color: st
   );
 }
 
-const AVATAR_COLORS = ['#2d3548', '#3b4a6b', '#4a3728', '#2a4a3b'];
+const AVATAR_COLORS = ['#6366f1', '#0ea5e9', '#8b5cf6', '#10b981'];
 
 function initials(name: string) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
 export default function ReportsScreen() {
-  const C = useC();
+  const P = usePalette();
 
   const [summary, setSummary] = useState<ExpenseSummary | null>(null);
   const [runs, setRuns] = useState<PayrollRun[]>([]);
@@ -138,22 +105,22 @@ export default function ReportsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
-        <YStack flex={1} alignItems="center" justifyContent="center"><Spinner color={C.gold} /></YStack>
-      </SafeAreaView>
+      <Screen variant="surface">
+        <View className="flex-1 items-center justify-center"><ActivityIndicator color={P.primary} /></View>
+      </Screen>
     );
   }
 
   if (error || !summary) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
-        <YStack flex={1} alignItems="center" justifyContent="center" padding={24} gap={12}>
-          <Ionicons name="alert-circle-outline" size={32} color={C.muted} />
-          <Text fontSize={14} fontFamily="$body" color={C.muted} textAlign="center">
+      <Screen variant="surface">
+        <View className="flex-1 items-center justify-center gap-3 p-6">
+          <Ionicons name="alert-circle-outline" size={32} color={P.muted} />
+          <AppText className="text-center text-sm text-muted-light dark:text-muted-dark">
             {error ?? 'Could not load reports'}
-          </Text>
-        </YStack>
-      </SafeAreaView>
+          </AppText>
+        </View>
+      </Screen>
     );
   }
 
@@ -171,176 +138,144 @@ export default function ReportsScreen() {
   const empMap = Object.fromEntries(employees.map((e) => [e.id, e]));
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
+    <Screen variant="surface">
       {/* ── Top bar ── */}
-      <XStack
-        paddingHorizontal={20} paddingVertical={14}
-        alignItems="center" justifyContent="space-between"
-        backgroundColor={C.surface}
-        borderBottomWidth={1} borderBottomColor={C.border}
-      >
-        <XStack alignItems="center" gap={10}>
-          <YStack width={34} height={34} borderRadius={17}
-                  backgroundColor={C.ink} alignItems="center" justifyContent="center">
-            <Text color="white" fontSize={12} fontFamily="$body" fontWeight="700" letterSpacing={0.5}>TP</Text>
-          </YStack>
-          <Text fontSize={16} fontFamily="$body" fontWeight="600" color={C.text}>Reports</Text>
-        </XStack>
-        <Pressable hitSlop={12}>
-          <Ionicons name="notifications-outline" size={22} color={C.muted} />
-        </Pressable>
-      </XStack>
+      <TopBar title="Reports" onNotifications={() => {}} />
 
-      <ScrollView backgroundColor={C.bg} showsVerticalScrollIndicator={false}>
-        <YStack paddingHorizontal={20} paddingTop={24} paddingBottom={40} gap={20}>
+      <ScrollView className="bg-canvas-light dark:bg-canvas-dark" showsVerticalScrollIndicator={false}>
+        <View className="gap-5 px-5 pb-10 pt-6">
 
           {/* ── YTD summary card ── */}
-          <YStack backgroundColor={C.ink} borderRadius={18} padding={22} gap={16}
-                  style={C.heroShadow}>
-            <XStack justifyContent="space-between" alignItems="flex-start">
-              <YStack gap={4}>
-                <Text fontSize={11} fontFamily="$body" fontWeight="600" letterSpacing={1}
-                      color="rgba(255,255,255,0.5)" textTransform="uppercase">
+          <Card variant="ink" className="gap-4 p-[22px]">
+            <View className="flex-row items-start justify-between">
+              <View className="gap-1">
+                <AppText className="font-inter-semibold text-[11px] uppercase tracking-[1px] text-white/50">
                   YTD Payroll Spend
-                </Text>
-                <Text fontSize={34} fontFamily="$body" fontWeight="700" color={C.gold} letterSpacing={-1}>
+                </AppText>
+                <AppText className="font-mono font-inter-bold text-[34px] tracking-[-1px] text-white">
                   ₹{ytdTotal.toLocaleString('en-IN')}
-                </Text>
-              </YStack>
-              <YStack backgroundColor="rgba(255,255,255,0.1)" borderRadius={10}
-                      paddingHorizontal={10} paddingVertical={5}>
-                <Text fontSize={11} fontFamily="$body" fontWeight="600"
-                      color="rgba(255,255,255,0.7)" letterSpacing={0.4}>2026</Text>
-              </YStack>
-            </XStack>
-            <Separator borderColor="rgba(255,255,255,0.12)" />
-            <XStack gap={24}>
-              <YStack gap={2}>
-                <Text fontSize={11} fontFamily="$body" color="rgba(255,255,255,0.5)" letterSpacing={0.4}>MONTHS</Text>
-                <Text fontSize={15} fontFamily="$body" fontWeight="600" color="white">{trend.length}</Text>
-              </YStack>
-              <YStack gap={2}>
-                <Text fontSize={11} fontFamily="$body" color="rgba(255,255,255,0.5)" letterSpacing={0.4}>ACTIVE STAFF</Text>
-                <Text fontSize={15} fontFamily="$body" fontWeight="600" color="white">
+                </AppText>
+              </View>
+              <View className="rounded-input bg-white/10 px-2.5 py-[5px]">
+                <AppText className="font-inter-semibold text-[11px] tracking-[0.4px] text-white/70">2026</AppText>
+              </View>
+            </View>
+            <View className="h-px w-full bg-white/[0.12]" />
+            <View className="flex-row gap-6">
+              <View className="gap-0.5">
+                <AppText className="text-[11px] tracking-[0.4px] text-white/50">MONTHS</AppText>
+                <AppText className="font-inter-semibold text-[15px] text-white">{trend.length}</AppText>
+              </View>
+              <View className="gap-0.5">
+                <AppText className="text-[11px] tracking-[0.4px] text-white/50">ACTIVE STAFF</AppText>
+                <AppText className="font-inter-semibold text-[15px] text-white">
                   {employees.length}
-                </Text>
-              </YStack>
-              <YStack gap={2}>
-                <Text fontSize={11} fontFamily="$body" color="rgba(255,255,255,0.5)" letterSpacing={0.4}>AVG / MONTH</Text>
-                <Text fontSize={15} fontFamily="$body" fontWeight="600" color="white">
+                </AppText>
+              </View>
+              <View className="gap-0.5">
+                <AppText className="text-[11px] tracking-[0.4px] text-white/50">AVG / MONTH</AppText>
+                <AppText className="font-inter-semibold text-[15px] text-white">
                   ₹{Math.round(ytdTotal / trend.length).toLocaleString('en-IN')}
-                </Text>
-              </YStack>
-            </XStack>
-          </YStack>
+                </AppText>
+              </View>
+            </View>
+          </Card>
 
           {/* ── Monthly spend bar chart ── */}
-          <YStack backgroundColor={C.surface} borderRadius={14} borderWidth={1}
-                  borderColor={C.border} padding={18} gap={14} style={C.cardShadow}>
-            <Text fontSize={14} fontFamily="$body" fontWeight="600" color={C.text}>
+          <Card className="gap-3.5 p-[18px]">
+            <AppText className="font-inter-semibold text-sm">
               Monthly Payroll Trend
-            </Text>
+            </AppText>
 
-            <XStack height={96} alignItems="flex-end" gap={8}>
+            <View className="h-24 flex-row items-end gap-2">
               {trend.map((t) => (
-                <YStack key={t.label} flex={1} alignItems="center" gap={6}>
-                  <SpendBar value={t.amount} max={maxAmount} color={t.paid ? C.ink : C.gold} />
-                  <Text fontSize={11} fontFamily="$body" fontWeight="600"
-                        color={t.paid ? C.muted : C.gold}>{t.label}</Text>
-                </YStack>
+                <View key={t.label} className="flex-1 items-center gap-1.5">
+                  <SpendBar value={t.amount} max={maxAmount} color={t.paid ? P.primary : P.secondary} />
+                  <AppText className={`font-inter-semibold text-[11px] ${t.paid ? 'text-muted-light dark:text-muted-dark' : 'text-secondary'}`}>{t.label}</AppText>
+                </View>
               ))}
-            </XStack>
+            </View>
 
-            <XStack gap={16}>
-              <XStack alignItems="center" gap={5}>
-                <YStack width={8} height={8} borderRadius={2} backgroundColor={C.ink} />
-                <Text fontSize={11} fontFamily="$body" color={C.muted}>Paid</Text>
-              </XStack>
-              <XStack alignItems="center" gap={5}>
-                <YStack width={8} height={8} borderRadius={2} backgroundColor={C.gold} />
-                <Text fontSize={11} fontFamily="$body" color={C.muted}>Pending</Text>
-              </XStack>
-            </XStack>
+            <View className="flex-row gap-4">
+              <View className="flex-row items-center gap-[5px]">
+                <View className="h-2 w-2 rounded-[2px] bg-primary" />
+                <AppText className="text-[11px] text-muted-light dark:text-muted-dark">Paid</AppText>
+              </View>
+              <View className="flex-row items-center gap-[5px]">
+                <View className="h-2 w-2 rounded-[2px] bg-secondary" />
+                <AppText className="text-[11px] text-muted-light dark:text-muted-dark">Pending</AppText>
+              </View>
+            </View>
 
-            <Separator borderColor={C.border} />
+            <Divider />
 
-            <YStack gap={8}>
+            <View className="gap-2">
               {trend.map((t) => (
-                <XStack key={t.label} justifyContent="space-between" alignItems="center">
-                  <XStack alignItems="center" gap={8}>
-                    <YStack width={28} height={28} borderRadius={8}
-                            backgroundColor={t.paid ? C.surfaceLow : C.goldBg}
-                            alignItems="center" justifyContent="center">
+                <View key={t.label} className="flex-row items-center justify-between">
+                  <View className="flex-row items-center gap-2">
+                    <View className={`h-7 w-7 items-center justify-center rounded-lg ${t.paid ? 'bg-surface-low-light dark:bg-surface-low-dark' : 'bg-secondary-container-light dark:bg-secondary-container-dark'}`}>
                       <Ionicons name={t.paid ? 'checkmark-circle' : 'time-outline'}
-                                size={14} color={t.paid ? C.success : C.gold} />
-                    </YStack>
-                    <Text fontSize={13} fontFamily="$body" color={C.text}>{t.label} 2026</Text>
-                  </XStack>
-                  <Text fontSize={13} fontFamily="$body" fontWeight="600" color={C.text}>
+                                size={14} color={t.paid ? '#16a34a' : P.secondary} />
+                    </View>
+                    <AppText className="text-[13px]">{t.label} 2026</AppText>
+                  </View>
+                  <AppText className="font-mono font-inter-semibold text-[13px]">
                     ₹{t.amount.toLocaleString('en-IN')}
-                  </Text>
-                </XStack>
+                  </AppText>
+                </View>
               ))}
-            </YStack>
-          </YStack>
+            </View>
+          </Card>
 
           {/* ── Per-employee cost ── */}
           {latestRun && latestRun.items.length > 0 && (
-            <YStack backgroundColor={C.surface} borderRadius={14} borderWidth={1}
-                    borderColor={C.border} padding={18} gap={14} style={C.cardShadow}>
-              <XStack justifyContent="space-between" alignItems="center">
-                <Text fontSize={14} fontFamily="$body" fontWeight="600" color={C.text}>
+            <Card className="gap-3.5 p-[18px]">
+              <View className="flex-row items-center justify-between">
+                <AppText className="font-inter-semibold text-sm">
                   Employee Cost — {latestRun.period.split(' ')[0]}
-                </Text>
-                <YStack backgroundColor={latestRun.status === 'paid' ? C.successBg : C.goldBg} borderRadius={9999}
-                        paddingHorizontal={8} paddingVertical={3}>
-                  <Text fontSize={10} fontFamily="$body" fontWeight="600"
-                        color={latestRun.status === 'paid' ? C.success : C.gold} letterSpacing={0.4}>
-                    {latestRun.status.toUpperCase()}
-                  </Text>
-                </YStack>
-              </XStack>
-              <Separator borderColor={C.border} />
-              <YStack gap={12}>
+                </AppText>
+                <Chip label={latestRun.status.toUpperCase()} tone={latestRun.status === 'paid' ? 'success' : 'warning'} />
+              </View>
+              <Divider />
+              <View className="gap-3">
                 {latestRun.items.map((item, i) => {
                   const emp = empMap[item.employeeId];
                   if (!emp) return null;
                   const pct = latestRun.totalAmount > 0
                     ? Math.round((item.finalSalary / latestRun.totalAmount) * 100) : 0;
                   return (
-                    <YStack key={item.employeeId} gap={8}>
-                      <XStack alignItems="center" gap={10}>
-                        <YStack width={34} height={34} borderRadius={17}
-                                backgroundColor={AVATAR_COLORS[i % AVATAR_COLORS.length]}
-                                alignItems="center" justifyContent="center">
-                          <Text fontSize={11} fontFamily="$body" fontWeight="700" color="white">
+                    <View key={item.employeeId} className="gap-2">
+                      <View className="flex-row items-center gap-2.5">
+                        <View className="h-[34px] w-[34px] items-center justify-center rounded-[17px]"
+                              style={{ backgroundColor: AVATAR_COLORS[i % AVATAR_COLORS.length] }}>
+                          <AppText className="font-inter-bold text-[11px] text-white">
                             {initials(emp.name)}
-                          </Text>
-                        </YStack>
-                        <YStack flex={1} gap={1}>
-                          <Text fontSize={13} fontFamily="$body" fontWeight="600" color={C.text}>{emp.name}</Text>
-                          <Text fontSize={11} fontFamily="$body" color={C.muted}>{emp.role}</Text>
-                        </YStack>
-                        <YStack alignItems="flex-end" gap={1}>
-                          <Text fontSize={13} fontFamily="$body" fontWeight="600" color={C.text}>
+                          </AppText>
+                        </View>
+                        <View className="flex-1 gap-px">
+                          <AppText className="font-inter-semibold text-[13px]">{emp.name}</AppText>
+                          <AppText className="text-[11px] text-muted-light dark:text-muted-dark">{emp.role}</AppText>
+                        </View>
+                        <View className="items-end gap-px">
+                          <AppText className="font-mono font-inter-semibold text-[13px]">
                             ₹{item.finalSalary.toLocaleString('en-IN')}
-                          </Text>
-                          <Text fontSize={11} fontFamily="$body" color={C.muted}>{pct}%</Text>
-                        </YStack>
-                      </XStack>
-                      <View style={{ height: 4, backgroundColor: C.border, borderRadius: 2, overflow: 'hidden' }}>
-                        <View style={{ width: `${pct}%`, height: '100%', backgroundColor: C.ink, borderRadius: 2 }} />
+                          </AppText>
+                          <AppText className="text-[11px] text-muted-light dark:text-muted-dark">{pct}%</AppText>
+                        </View>
                       </View>
-                    </YStack>
+                      <View className="h-1 overflow-hidden rounded-[2px] bg-border-light dark:bg-border-dark">
+                        <View style={{ width: `${pct}%`, height: '100%', backgroundColor: P.primary, borderRadius: 2 }} />
+                      </View>
+                    </View>
                   );
                 })}
-              </YStack>
-            </YStack>
+              </View>
+            </Card>
           )}
 
           {/* ── Export actions ── */}
-          <YStack gap={10}>
-            <Text fontSize={14} fontFamily="$body" fontWeight="600" color={C.text}>Export &amp; Share</Text>
+          <View className="gap-2.5">
+            <AppText className="font-inter-semibold text-sm">Export &amp; Share</AppText>
             {[
               {
                 icon: 'document-text-outline' as const,
@@ -369,34 +304,30 @@ export default function ReportsScreen() {
                 disabled={action.loading}
                 style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }], opacity: action.loading ? 0.6 : 1 })}
               >
-                <XStack backgroundColor={C.surface} borderRadius={14} borderWidth={1}
-                        borderColor={C.border} paddingHorizontal={16} paddingVertical={14}
-                        alignItems="center" gap={12} style={C.cardShadow}>
-                  <YStack width={40} height={40} borderRadius={20} backgroundColor={C.surfaceLow}
-                          alignItems="center" justifyContent="center">
+                <Card className="flex-row items-center gap-3 px-4 py-3.5">
+                  <View className="h-10 w-10 items-center justify-center rounded-full bg-surface-low-light dark:bg-surface-low-dark">
                     {action.loading
-                      ? <Spinner size="small" color={C.ink} />
-                      : <Ionicons name={action.icon} size={18} color={C.ink} />}
-                  </YStack>
-                  <YStack flex={1} gap={2}>
-                    <Text fontSize={13} fontFamily="$body" fontWeight="600" color={C.text}>{action.label}</Text>
-                    <Text fontSize={12} fontFamily="$body" color={C.muted}>{action.desc}</Text>
-                  </YStack>
-                  <Ionicons name="chevron-forward" size={16} color={C.placeholder} />
-                </XStack>
+                      ? <ActivityIndicator size="small" color={P.primary} />
+                      : <Ionicons name={action.icon} size={18} color={P.primary} />}
+                  </View>
+                  <View className="flex-1 gap-0.5">
+                    <AppText className="font-inter-semibold text-[13px]">{action.label}</AppText>
+                    <AppText className="text-xs text-muted-light dark:text-muted-dark">{action.desc}</AppText>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={P.placeholder} />
+                </Card>
               </Pressable>
             ))}
             {exportError && (
-              <XStack backgroundColor="#fef2f2" borderRadius={12} borderWidth={1} borderColor="#dc2626"
-                      padding={12} alignItems="center" gap={10}>
-                <Ionicons name="alert-circle" size={16} color="#dc2626" />
-                <Text flex={1} fontSize={12} fontFamily="$body" color="#dc2626">{exportError}</Text>
-              </XStack>
+              <View className="flex-row items-center gap-2.5 rounded-button border border-rose-300 bg-rose-50 p-3 dark:border-rose-500/40 dark:bg-rose-500/10">
+                <Ionicons name="alert-circle" size={16} color="#e11d48" />
+                <AppText className="flex-1 text-xs text-rose-600 dark:text-rose-300">{exportError}</AppText>
+              </View>
             )}
-          </YStack>
+          </View>
 
-        </YStack>
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }

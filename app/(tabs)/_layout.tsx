@@ -1,15 +1,17 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useColorScheme } from 'react-native';
+import { useColorScheme } from 'nativewind';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { SidebarProvider } from '@/src/components/ui';
+
 function useColors() {
-  const dark = useColorScheme() === 'dark';
+  const dark = useColorScheme().colorScheme === 'dark';
   return {
-    bg:       dark ? '#161a24' : '#ffffff',
-    border:   dark ? '#2a2f3e' : '#e0e3ea',
-    active:   '#d4af37',
-    inactive: dark ? '#8b8fa8' : '#9ba1b0',
+    bg:       dark ? '#1e293b' : '#ffffff',
+    border:   dark ? '#334155' : '#e2e8f0',
+    active:   '#6366f1',
+    inactive: dark ? '#94a3b8' : '#94a3b8',
   };
 }
 
@@ -22,6 +24,7 @@ export default function TabLayout() {
   const insets = useSafeAreaInsets();
 
   return (
+    <SidebarProvider>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -35,7 +38,7 @@ export default function TabLayout() {
           height: 60 + insets.bottom,
         },
         tabBarLabelStyle: {
-          fontFamily: 'Inter_500Medium',
+          fontFamily: 'Roboto_500Medium',
           fontSize: 11,
           letterSpacing: 0.02,
         },
@@ -76,5 +79,6 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    </SidebarProvider>
   );
 }

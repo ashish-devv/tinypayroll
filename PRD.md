@@ -14,18 +14,14 @@ TinyPayroll's mobile app currently runs entirely on mock data (`src/data/mock.ts
 
 ## 2. Database choice
 
-**Recommendation: stay on MySQL.** You already decided this, and for this project's shape it's the right call — don't switch for switching's sake.
+**Decision: PostgreSQL.** Fully relational domain (employees, attendance, payroll lines), and Postgres brings extras that fit a multi-tenant financial app well:
 
-| | MySQL (chosen) | PostgreSQL (alternative) |
-|---|---|---|
-| Managed hosting cost | Cheapest/most ubiquitous across every cloud + budget hosts (Railway, PlanetScale, RDS, Aiven) | Slightly pricier tier on some platforms |
-| Ops familiarity | Most widely known, easiest to hire/outsource for | Slightly steeper learning curve |
-| JSON support | Adequate (JSON type, functions) | Better (JSONB + indexing) — not needed here, our schema is fully relational |
-| Row-level security | Not built-in | Native RLS — nice-to-have for multi-tenant isolation, not required (see §5) |
-| Field encryption | App-level (JPA `AttributeConverter` + AES) | Same, or `pgcrypto` |
-| Fit for this domain | Fully relational data (employees, attendance, payroll lines) — MySQL handles this perfectly | Same |
+- **JSONB** (with indexing) for any flexible fields — e.g. the `AuditLog` old/new value snapshots (§5).
+- **Native row-level security (RLS)** — an optional DB-level second net behind the code-level tenant scoping (§4).
+- **Field encryption** — app-level via JPA `AttributeConverter` + AES (§6), or `pgcrypto` if pushed to the DB.
+- Widely available managed hosting (Render, Railway, Supabase, RDS, Neon).
 
-Only reasons to reconsider later: if you need JSONB-heavy flexible fields, native full-text search, or DB-enforced multi-tenant row security. None of that applies at this scale. **Decision: MySQL 8.x, revisit only if a concrete need appears.**
+**Decision: PostgreSQL, revisit only if a concrete need appears.**
 
 **Migrations: `ddl-auto=update` for MVP** (ponytail: Hibernate auto-generates schema from `@Entity` classes — zero migration files, fastest to iterate solo). No rollback story and it can drift silently on renames/drops, so switch to **Flyway** the moment a second dev joins or prod has real user data worth protecting from a bad auto-migration.
 
@@ -263,7 +259,7 @@ GET    /api/v1/reports/export?type=csv|pdf&from=&to=
 ## 9. Testing strategy
 
 - **Unit tests**: services with JUnit 5 + Mockito, mocked repositories — this is where `PayrollCalculationService`'s formula gets its exhaustive test (matches the existing `payroll.ts` self-check pattern already in the repo).
-- **Repository tests**: `@DataJpaTest` + **Testcontainers MySQL** — real MySQL in CI, not H2, so constraint/index behavior matches prod (schema built via `ddl-auto=update` same as the app, per §2).
+- **Repository tests**: `@DataJpaTest` + **Testcontainers PostgreSQL** — real Postgres in CI, not H2, so constraint/index behavior matches prod (schema built via `ddl-auto=update` same as the app, per §2).
 - **Controller tests**: `@WebMvcTest` + `MockMvc` for request validation, auth, and error-shape assertions.
 - **Integration tests**: full `@SpringBootTest` + Testcontainers for the critical path — signup → add employee → mark attendance → run payroll → finalize → fetch payslip.
 - CI: GitHub Actions — build, test, OWASP dependency check, then Docker image build.
@@ -293,4 +289,4 @@ GET    /api/v1/reports/export?type=csv|pdf&from=&to=
 
 1. **Payslip PDF generation** — server-side (e.g. OpenPDF/iText) vs. client-side? Recommend server-side so the "source of truth" payslip is consistent regardless of client, and WhatsApp delivery (Phase 2) can attach it directly.
 2. **Staff invites** (Phase 2) — email-link invite flow, or owner sets a temp password directly? Affects whether email delivery infra is needed for MVP or can wait.
-3. **Hosting target** — self-managed (Docker Compose on a VPS) vs. managed (Railway/Render + PlanetScale/RDS)? Affects §7's secrets story and CI/CD deploy step.
+3. **Hosting target** — self-managed (Docker Compose on a VPS) vs. managed (Railway/Render + a managed Postgres like Neon/Supabase/RDS)? Affects §7's secrets story and CI/CD deploy step.

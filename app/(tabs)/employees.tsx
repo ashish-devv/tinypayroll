@@ -1,69 +1,30 @@
-import { ScrollView, YStack, XStack, Text, Spinner } from 'tamagui';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollView, View, Pressable, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Pressable, useColorScheme } from 'react-native';
 import { useCallback, useState } from 'react';
 
+import { Screen, Card, AppText, Chip, TopBar, usePalette, useShadows, pressScale } from '@/src/components/ui';
 import { listEmployees } from '@/src/services/employees';
 import type { Employee } from '@/src/types';
 
-function useC() {
-  const dark = useColorScheme() === 'dark';
-  return {
-    bg:          dark ? '#0d0f14' : '#f8f9ff',
-    surface:     dark ? '#161a24' : '#ffffff',
-    surfaceLow:  dark ? '#1e2235' : '#eff4ff',
-    text:        dark ? '#e8eaf0' : '#0b1c30',
-    muted:       dark ? '#8b8fa8' : '#45464c',
-    placeholder: dark ? '#555a72' : '#9ba1b0',
-    border:      dark ? '#2a2f3e' : '#e0e3ea',
-    inputBg:     dark ? '#1e2235' : '#f2f4f8',
-    ink:         '#1a1f2c',
-    gold:        '#d4af37',
-    success:     '#16a34a',
-    successBg:   dark ? '#14301e' : '#f0fdf4',
-    cardShadow: {
-      shadowColor: dark ? '#000000' : '#1a1f2c',
-      shadowOpacity: dark ? 0.28 : 0.07,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: dark ? 5 : 2,
-    } as const,
-    heroShadow: {
-      shadowColor: '#d4af37',
-      shadowOpacity: dark ? 0.28 : 0.2,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 6 },
-      elevation: dark ? 10 : 6,
-    } as const,
-  };
-}
-
-const AVATAR_COLORS = ['#2d3548', '#3b4a6b', '#4a3728', '#2a4a3b', '#4a2a3a'];
+const AVATAR_COLORS = ['#6366f1', '#0ea5e9', '#8b5cf6', '#10b981', '#f43f5e'];
 
 function avatar(name: string, i: number) {
   return { bg: AVATAR_COLORS[i % AVATAR_COLORS.length], initials: name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() };
 }
 
-function PayChip({ type, C }: { type: string; C: ReturnType<typeof useC> }) {
+function PayChip({ type }: { type: string }) {
   const monthly = type === 'MONTHLY';
   return (
-    <YStack
-      backgroundColor={monthly ? C.gold + '22' : C.surfaceLow}
-      borderRadius={9999}
-      paddingHorizontal={8}
-      paddingVertical={3}
-    >
-      <Text fontSize={10} fontFamily="$body" fontWeight="600" letterSpacing={0.6}
-            color={monthly ? '#a07c10' : C.muted} textTransform="uppercase">
-        {type}
-      </Text>
-    </YStack>
+    <Chip
+      label={type}
+      tone={monthly ? 'info' : 'neutral'}
+    />
   );
 }
 
-function EmployeeRow({ emp, index, C, onPress }: { emp: Employee; index: number; C: ReturnType<typeof useC>; onPress: () => void }) {
+function EmployeeRow({ emp, index, onPress }: { emp: Employee; index: number; onPress: () => void }) {
+  const P = usePalette();
   const av = avatar(emp.name, index);
   const payType = emp.baseSalary >= 10000 ? 'MONTHLY' : 'DAILY WAGE';
   const payDisplay = payType === 'MONTHLY'
@@ -71,64 +32,48 @@ function EmployeeRow({ emp, index, C, onPress }: { emp: Employee; index: number;
     : `₹${Math.round(emp.baseSalary / 26)}/day`;
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
-    >
-      <XStack
-        backgroundColor={C.surface}
-        borderRadius={14}
-        borderWidth={1}
-        borderColor={C.border}
-        paddingHorizontal={16}
-        paddingVertical={14}
-        alignItems="center"
-        gap={12}
-        style={C.cardShadow}
-      >
-        <YStack
-          width={44} height={44} borderRadius={22}
-          backgroundColor={av.bg}
-          alignItems="center" justifyContent="center"
-          position="relative"
+    <Pressable onPress={onPress} style={pressScale}>
+      <Card className="flex-row items-center gap-3 px-4 py-3.5">
+        <View
+          className="relative h-11 w-11 items-center justify-center rounded-[22px]"
+          style={{ backgroundColor: av.bg }}
         >
-          <Text fontSize={15} fontFamily="$body" fontWeight="700" color="white">
+          <AppText className="font-inter-bold text-[15px] text-white">
             {av.initials}
-          </Text>
+          </AppText>
           {emp.status === 'active' && (
-            <YStack
-              position="absolute" bottom={1} right={1}
-              width={10} height={10} borderRadius={5}
-              backgroundColor={C.success}
-              borderWidth={2} borderColor={C.surface}
+            <View
+              className="absolute bottom-px right-px h-2.5 w-2.5 rounded-[5px] border-2 border-surface-light dark:border-surface-dark"
+              style={{ backgroundColor: '#16a34a' }}
             />
           )}
-        </YStack>
+        </View>
 
-        <YStack flex={1} gap={2}>
-          <Text fontSize={14} fontFamily="$body" fontWeight="600" color={C.text}>
+        <View className="flex-1 gap-0.5">
+          <AppText className="font-inter-semibold text-sm">
             {emp.name}
-          </Text>
-          <Text fontSize={12} fontFamily="$body" color={C.muted} textTransform="uppercase" letterSpacing={0.4}>
+          </AppText>
+          <AppText className="text-xs uppercase tracking-[0.4px] text-muted-light dark:text-muted-dark">
             {emp.role}
-          </Text>
-        </YStack>
+          </AppText>
+        </View>
 
-        <YStack alignItems="flex-end" gap={4}>
-          <PayChip type={payType} C={C} />
-          <Text fontSize={13} fontFamily="$body" fontWeight="600" color={C.text}>
+        <View className="items-end gap-1">
+          <PayChip type={payType} />
+          <AppText className="font-mono text-[13px] text-primary">
             {payDisplay}
-          </Text>
-        </YStack>
+          </AppText>
+        </View>
 
-        <Ionicons name="chevron-forward" size={16} color={C.placeholder} />
-      </XStack>
+        <Ionicons name="chevron-forward" size={16} color={P.placeholder} />
+      </Card>
     </Pressable>
   );
 }
 
 export default function EmployeesScreen() {
-  const C = useC();
+  const P = usePalette();
+  const shadows = useShadows();
   const router = useRouter();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,124 +95,81 @@ export default function EmployeesScreen() {
   const active = employees.filter((e) => e.status === 'active');
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
+    <Screen variant="surface">
 
       {/* ── Top bar ── */}
-      <XStack
-        paddingHorizontal={20} paddingVertical={14}
-        alignItems="center" justifyContent="space-between"
-        backgroundColor={C.surface}
-        borderBottomWidth={1} borderBottomColor={C.border}
-      >
-        <XStack alignItems="center" gap={10}>
-          <YStack width={34} height={34} borderRadius={17}
-                  backgroundColor="#1a1f2c" alignItems="center" justifyContent="center">
-            <Text color="white" fontSize={12} fontFamily="$body" fontWeight="700" letterSpacing={0.5}>TP</Text>
-          </YStack>
-          <Text fontSize={16} fontFamily="$body" fontWeight="600" color={C.text}>TinyPayroll</Text>
-        </XStack>
-        <Pressable hitSlop={12}>
-          <Ionicons name="notifications-outline" size={22} color={C.muted} />
-        </Pressable>
-      </XStack>
+      <TopBar title="TinyPayroll" onNotifications={() => {}} />
 
-      <ScrollView backgroundColor={C.bg} showsVerticalScrollIndicator={false}>
-        <YStack paddingHorizontal={20} paddingTop={24} paddingBottom={32} gap={20}>
+      <ScrollView className="bg-canvas-light dark:bg-canvas-dark" showsVerticalScrollIndicator={false}>
+        <View className="gap-5 px-5 pb-8 pt-6">
 
-          <YStack gap={4}>
-            <Text fontSize={22} fontFamily="$body" fontWeight="600" color={C.text} letterSpacing={-0.3}>
+          <View className="gap-1">
+            <AppText className="font-inter-semibold text-[22px] tracking-[-0.3px]">
               Employees
-            </Text>
-            <Text fontSize={13} fontFamily="$body" color={C.muted}>
+            </AppText>
+            <AppText className="text-[13px] text-muted-light dark:text-muted-dark">
               Managing {active.length} active staff
-            </Text>
-          </YStack>
+            </AppText>
+          </View>
 
           {/* ── Search row ── */}
-          <XStack gap={10} alignItems="center">
-            <XStack
-              flex={1}
-              backgroundColor={C.inputBg}
-              borderRadius={10}
-              paddingHorizontal={12}
-              paddingVertical={10}
-              alignItems="center"
-              gap={8}
-            >
-              <Ionicons name="search-outline" size={16} color={C.placeholder} />
-              <Text fontSize={14} fontFamily="$body" color={C.placeholder}>Search employees…</Text>
-            </XStack>
+          <View className="flex-row items-center gap-2.5">
+            <View className="flex-1 flex-row items-center gap-2 rounded-input bg-surface-low-light px-3 py-2.5 dark:bg-surface-low-dark">
+              <Ionicons name="search-outline" size={16} color={P.placeholder} />
+              <AppText className="text-sm text-placeholder-light dark:text-placeholder-dark">Search employees…</AppText>
+            </View>
             <Pressable>
-              <YStack
-                width={42} height={42} borderRadius={10}
-                backgroundColor={C.inputBg}
-                alignItems="center" justifyContent="center"
-              >
-                <Ionicons name="options-outline" size={18} color={C.muted} />
-              </YStack>
+              <View className="h-[42px] w-[42px] items-center justify-center rounded-input bg-surface-low-light dark:bg-surface-low-dark">
+                <Ionicons name="options-outline" size={18} color={P.muted} />
+              </View>
             </Pressable>
-          </XStack>
+          </View>
 
           {/* ── Add Employee CTA ── */}
           <Pressable
             onPress={() => router.push('/employees/add' as any)}
-            style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
+            style={pressScale}
           >
-            <XStack
-              backgroundColor={C.ink}
-              borderRadius={12}
-              paddingVertical={14}
-              alignItems="center"
-              justifyContent="center"
-              gap={8}
-              style={C.heroShadow}
+            <View
+              className="flex-row items-center justify-center gap-2 rounded-button bg-primary py-3.5"
+              style={shadows.hero}
             >
               <Ionicons name="person-add-outline" size={18} color="white" />
-              <Text fontSize={15} fontFamily="$body" fontWeight="600" color="white">
+              <AppText className="font-inter-semibold text-[15px] text-white">
                 Add Employee
-              </Text>
-            </XStack>
+              </AppText>
+            </View>
           </Pressable>
 
           {/* ── Employee list ── */}
           {loading ? (
-            <YStack paddingVertical={40} alignItems="center"><Spinner color={C.gold} /></YStack>
+            <View className="items-center py-10"><ActivityIndicator color={P.primary} /></View>
           ) : error ? (
-            <Text fontSize={13} fontFamily="$body" color="#dc2626" textAlign="center">{error}</Text>
+            <AppText className="text-center text-[13px] text-rose-600">{error}</AppText>
           ) : (
-            <YStack gap={10}>
+            <View className="gap-2.5">
               {active.map((emp, i) => (
                 <EmployeeRow
                   key={emp.id}
                   emp={emp}
                   index={i}
-                  C={C}
                   onPress={() => router.push({ pathname: '/employees/[id]', params: { id: emp.id } } as any)}
                 />
               ))}
-            </YStack>
+            </View>
           )}
 
           {/* ── View all ── */}
           <Pressable style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
-            <XStack
-              backgroundColor={C.surface}
-              borderRadius={12}
-              borderWidth={1}
-              borderColor={C.border}
-              paddingVertical={13}
-              alignItems="center"
-              justifyContent="center"
-              style={C.cardShadow}
-            >
-              <Text fontSize={14} fontFamily="$body" fontWeight="600" color={C.text}>
+            <Card className="items-center justify-center py-[13px]">
+              <AppText className="font-inter-semibold text-sm">
                 VIEW ALL EMPLOYEES
-              </Text>
-            </XStack>
+              </AppText>
+            </Card>
           </Pressable>
 
-        </YStack>
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }

@@ -1,45 +1,14 @@
-import { ScrollView, YStack, XStack, Text, Separator, Spinner } from 'tamagui';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ScrollView, View, Pressable, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Pressable, useColorScheme } from 'react-native';
 import { useCallback, useState } from 'react';
 
+import { Screen, Card, AppText, Divider, TopBar, usePalette, pressScale } from '@/src/components/ui';
 import { getBusiness, type Business } from '@/src/services/business';
 import { listEmployees } from '@/src/services/employees';
 import { listAttendance } from '@/src/services/attendance';
 import { listPayrollRuns } from '@/src/services/payroll';
 import type { Employee, PayrollRun, AttendanceRecord } from '@/src/types';
-
-function useC() {
-  const dark = useColorScheme() === 'dark';
-  return {
-    bg:          dark ? '#0d0f14' : '#f8f9ff',
-    surface:     dark ? '#161a24' : '#ffffff',
-    surfaceLow:  dark ? '#1e2235' : '#eff4ff',
-    text:        dark ? '#e8eaf0' : '#0b1c30',
-    muted:       dark ? '#8b8fa8' : '#45464c',
-    placeholder: dark ? '#555a72' : '#9ba1b0',
-    border:      dark ? '#2a2f3e' : '#e0e3ea',
-    ink:  '#1a1f2c',
-    gold: '#d4af37',
-    // shadows
-    cardShadow: {
-      shadowColor: dark ? '#000000' : '#1a1f2c',
-      shadowOpacity: dark ? 0.28 : 0.07,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: dark ? 5 : 2,
-    } as const,
-    heroShadow: {
-      shadowColor: '#d4af37',
-      shadowOpacity: dark ? 0.28 : 0.2,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 6 },
-      elevation: dark ? 10 : 6,
-    } as const,
-  };
-}
 
 function rupee(n: number) {
   if (n >= 100000) return `₹${(n / 100000).toFixed(1)}L`;
@@ -56,33 +25,41 @@ const recentActivity = [
   { id: '2', icon: 'person-add-outline' as const, label: 'New employee: Priya',       time: 'Yesterday'  },
 ];
 
-function StatCard({ label, value, C }: { label: string; value: string; C: ReturnType<typeof useC> }) {
+// Quick-action circle — the round icon buttons under the hero.
+function QuickAction({ icon, label, tint, bg, onPress }: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  tint: string;
+  bg: string;
+  onPress: () => void;
+}) {
   return (
-    <YStack
-      flex={1}
-      backgroundColor={C.surface}
-      borderRadius={14}
-      borderWidth={1}
-      borderColor={C.border}
-      paddingHorizontal={14}
-      paddingVertical={14}
-      gap={6}
-      style={C.cardShadow}
-    >
-      <Text fontSize={10} fontFamily="$body" fontWeight="600" letterSpacing={0.8}
-            color={C.muted} textTransform="uppercase">
+    <Pressable onPress={onPress} style={pressScale} className="flex-1 items-center gap-2">
+      <View className="h-14 w-14 items-center justify-center rounded-full" style={{ backgroundColor: bg }}>
+        <Ionicons name={icon} size={24} color={tint} />
+      </View>
+      <AppText className="font-inter-medium text-[12px] text-muted-light dark:text-muted-dark">{label}</AppText>
+    </Pressable>
+  );
+}
+
+function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+  return (
+    <Card className="flex-1 p-4">
+      <AppText className="font-inter-semibold text-[11px] uppercase tracking-[0.8px] text-muted-light dark:text-muted-dark">
         {label}
-      </Text>
-      <Text fontSize={24} fontFamily="$body" fontWeight="700" color={C.text} letterSpacing={-0.5}>
+      </AppText>
+      <AppText className="mt-2 font-mono text-[28px] leading-[32px] tracking-[-1px] text-text-light dark:text-text-dark">
         {value}
-      </Text>
-    </YStack>
+      </AppText>
+      {sub ? <AppText className="mt-0.5 text-[12px] text-muted-light dark:text-muted-dark">{sub}</AppText> : null}
+    </Card>
   );
 }
 
 export default function DashboardScreen() {
   const router = useRouter();
-  const C = useC();
+  const P = usePalette();
 
   const [business, setBusiness] = useState<Business | null>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -116,22 +93,24 @@ export default function DashboardScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
-        <YStack flex={1} alignItems="center" justifyContent="center"><Spinner color={C.gold} /></YStack>
-      </SafeAreaView>
+      <Screen variant="surface">
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color={P.primary} />
+        </View>
+      </Screen>
     );
   }
 
   if (error || !business) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
-        <YStack flex={1} alignItems="center" justifyContent="center" padding={24} gap={12}>
-          <Ionicons name="alert-circle-outline" size={32} color={C.muted} />
-          <Text fontSize={14} fontFamily="$body" color={C.muted} textAlign="center">
+      <Screen variant="surface">
+        <View className="flex-1 items-center justify-center gap-3 p-6">
+          <Ionicons name="alert-circle-outline" size={32} color={P.muted} />
+          <AppText className="text-center text-sm text-muted-light dark:text-muted-dark">
             {error ?? 'Could not load dashboard'}
-          </Text>
-        </YStack>
-      </SafeAreaView>
+          </AppText>
+        </View>
+      </Screen>
     );
   }
 
@@ -144,134 +123,110 @@ export default function DashboardScreen() {
   const todayPresent = attendance.filter((a) => a.date === today && a.status === 'present').length;
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.surface }}>
+    <Screen variant="canvas">
 
-      {/* ── Top bar ── */}
-      <XStack
-        paddingHorizontal={20} paddingVertical={14}
-        alignItems="center" justifyContent="space-between"
-        backgroundColor={C.surface}
-        borderBottomWidth={1} borderBottomColor={C.border}
-      >
-        <XStack alignItems="center" gap={10}>
-          <YStack width={34} height={34} borderRadius={17}
-                  backgroundColor={C.ink} alignItems="center" justifyContent="center">
-            <Text color="white" fontSize={12} fontFamily="$body" fontWeight="700" letterSpacing={0.5}>
-              TP
-            </Text>
-          </YStack>
-          <Text fontSize={16} fontFamily="$body" fontWeight="600" color={C.text}>
-            TinyPayroll
-          </Text>
-        </XStack>
-        <XStack alignItems="center" gap={12}>
-          <Pressable hitSlop={12}>
-            <Ionicons name="notifications-outline" size={22} color={C.muted} />
-          </Pressable>
-          <Pressable hitSlop={12} onPress={() => router.push('/settings/business' as any)}>
-            <Ionicons name="settings-outline" size={22} color={C.muted} />
-          </Pressable>
-        </XStack>
-      </XStack>
+      {/* ── Glass top bar ── */}
+      <TopBar
+        title="TinyPayroll"
+        variant="glass"
+        onNotifications={() => {}}
+        onSettings={() => router.push('/settings/business' as any)}
+      />
 
-      <ScrollView backgroundColor={C.bg} showsVerticalScrollIndicator={false}>
-        <YStack paddingHorizontal={20} paddingTop={24} paddingBottom={32} gap={20}>
+      <ScrollView className="bg-canvas-light dark:bg-canvas-dark" showsVerticalScrollIndicator={false}>
+        <View className="gap-6 px-5 pb-8 pt-6">
 
           {/* ── Greeting ── */}
-          <YStack gap={4}>
-            <Text fontSize={22} fontFamily="$body" fontWeight="600" color={C.text} letterSpacing={-0.3}>
+          <View className="gap-1">
+            <AppText className="font-inter-extrabold text-[26px] tracking-[-0.5px]">
               Good morning, {business.companyName}
-            </Text>
-            <XStack alignItems="center" gap={5}>
-              <Ionicons name="calendar-outline" size={13} color={C.muted} />
-              <Text fontSize={13} fontFamily="$body" color={C.muted}>
-                {now.toLocaleString('en-US', { month: 'short' })} 1 – {now.toLocaleString('en-US', { month: 'short' })} {new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()}
-              </Text>
-            </XStack>
-          </YStack>
+            </AppText>
+            <AppText className="text-[14px] text-muted-light dark:text-muted-dark">
+              Here&apos;s your business overview for {now.toLocaleString('en-US', { month: 'long' })}.
+            </AppText>
+          </View>
 
-          {/* ── Pay cycle card ── */}
-          <YStack backgroundColor={C.ink} borderRadius={18} padding={20} gap={16}
-                  style={C.heroShadow}>
-            <Text fontSize={10} fontFamily="$body" fontWeight="600" letterSpacing={1.2}
-                  color="rgba(255,255,255,0.55)" textTransform="uppercase">
-              Current Pay Cycle
-            </Text>
-            <XStack justifyContent="space-between" alignItems="center">
-              <Text fontSize={20} fontFamily="$body" fontWeight="600" color="white" letterSpacing={-0.3}>
-                Generate Payroll
-              </Text>
-              <YStack width={42} height={42} borderRadius={21}
-                      backgroundColor={C.gold} alignItems="center" justifyContent="center">
-                <Ionicons name="flash" size={20} color={C.ink} />
-              </YStack>
-            </XStack>
-            <Pressable
-              onPress={() => router.push('/payroll/review' as any)}
-              style={({ pressed }) => ({ opacity: pressed ? 0.8 : 1 })}
-            >
-              <XStack backgroundColor="rgba(255,255,255,0.1)" borderRadius={10}
-                      paddingHorizontal={14} paddingVertical={12}
-                      alignItems="center" justifyContent="space-between">
-                <Text fontSize={13} fontFamily="$body" color="rgba(255,255,255,0.8)">
-                  Ready for review: {activeEmployees.length} employees
-                </Text>
-                <Ionicons name="arrow-forward" size={14} color="rgba(255,255,255,0.6)" />
-              </XStack>
-            </Pressable>
-          </YStack>
+          {/* ── Hero payroll card ── */}
+          <Card variant="ink" className="overflow-hidden p-5">
+            {/* ambient blobs */}
+            <View className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10" />
+            <View className="absolute -bottom-12 -left-8 h-28 w-28 rounded-full bg-white/5" />
+            <View className="relative gap-4">
+              <View className="flex-row items-center justify-between">
+                <AppText className="font-inter-semibold text-[11px] uppercase tracking-[1.2px] text-white/70">
+                  Total Payroll (Current Month)
+                </AppText>
+                <Ionicons name="cash-outline" size={20} color="rgba(255,255,255,0.7)" />
+              </View>
+              <AppText className="font-mono text-[36px] leading-[40px] tracking-[-1.5px] text-white">
+                {rupee(monthExpense)}
+              </AppText>
+              <Pressable
+                onPress={() => router.push('/payroll/review' as any)}
+                style={pressScale}
+              >
+                <View className="flex-row items-center justify-between rounded-input bg-white/15 px-4 py-3">
+                  <AppText className="font-inter-medium text-[13px] text-white">
+                    Review payroll · {activeEmployees.length} employees
+                  </AppText>
+                  <Ionicons name="arrow-forward" size={16} color="#ffffff" />
+                </View>
+              </Pressable>
+            </View>
+          </Card>
 
           {/* ── Stat tiles ── */}
-          <XStack gap={12}>
-            <StatCard label="Total Employees"    value={String(activeEmployees.length)} C={C} />
-            <StatCard label="Today's Attendance" value={`${todayPresent} / ${activeEmployees.length}`} C={C} />
-          </XStack>
-          <XStack gap={12}>
-            <StatCard label="Payroll Pending"  value={pendingRun ? rupee(pendingRun.totalAmount) : '₹0'} C={C} />
-            <StatCard label="Month's Expense"  value={rupee(monthExpense)} C={C} />
-          </XStack>
+          <View className="flex-row gap-3">
+            <StatCard label="Active Staff" value={String(activeEmployees.length)} sub="Employees on payroll" />
+            <StatCard label="Present Today" value={`${todayPresent}/${activeEmployees.length}`} sub="Checked in" />
+          </View>
+          <View className="flex-row gap-3">
+            <StatCard label="Pending" value={pendingRun ? rupee(pendingRun.totalAmount) : '₹0'} sub="Awaiting run" />
+            <StatCard label="This Month" value={rupee(monthExpense)} sub="Total cost" />
+          </View>
+
+          {/* ── Quick actions ── */}
+          <View className="gap-3">
+            <AppText className="font-inter-semibold text-[11px] uppercase tracking-[0.8px] text-muted-light dark:text-muted-dark">
+              Quick Actions
+            </AppText>
+            <View className="flex-row gap-2">
+              <QuickAction icon="play" label="Run Payroll" tint="#ffffff" bg={P.primary}
+                onPress={() => router.push('/payroll/review' as any)} />
+              <QuickAction icon="person-add" label="Add Staff" tint={P.secondary} bg={P.dark ? '#075985' : '#e0f2fe'}
+                onPress={() => router.push('/employees/add' as any)} />
+              <QuickAction icon="bar-chart" label="Reports" tint={P.muted} bg={P.surfaceLow}
+                onPress={() => router.push('/(tabs)/reports' as any)} />
+            </View>
+          </View>
 
           {/* ── Recent activity ── */}
-          <YStack gap={12}>
-            <XStack justifyContent="space-between" alignItems="center">
-              <Text fontSize={15} fontFamily="$body" fontWeight="600" color={C.text}>Recent Activity</Text>
-              <Text fontSize={12} fontFamily="$body" fontWeight="600" color={C.ink} letterSpacing={0.3}>VIEW ALL</Text>
-            </XStack>
-            <YStack backgroundColor={C.surface} borderRadius={14}
-                    borderWidth={1} borderColor={C.border} overflow="hidden"
-                    style={C.cardShadow}>
+          <View className="gap-3">
+            <View className="flex-row items-center justify-between">
+              <AppText className="font-inter-semibold text-[15px]">Recent Activity</AppText>
+              <AppText className="font-inter-semibold text-[13px] text-primary">See all</AppText>
+            </View>
+            <Card className="overflow-hidden p-0">
               {recentActivity.map((item, i) => (
-                <YStack key={item.id}>
-                  <XStack paddingHorizontal={16} paddingVertical={14} alignItems="center" gap={12}>
-                    <YStack width={38} height={38} borderRadius={19}
-                            backgroundColor={C.surfaceLow} alignItems="center" justifyContent="center">
-                      <Ionicons name={item.icon} size={18} color={C.muted} />
-                    </YStack>
-                    <YStack flex={1} gap={2}>
-                      <Text fontSize={14} fontFamily="$body" fontWeight="500" color={C.text}>{item.label}</Text>
-                      <Text fontSize={12} fontFamily="$body" color={C.placeholder}>{item.time}</Text>
-                    </YStack>
-                    <Ionicons name="chevron-forward" size={16} color={C.placeholder} />
-                  </XStack>
-                  {i < recentActivity.length - 1 && <Separator borderColor={C.border} />}
-                </YStack>
+                <View key={item.id}>
+                  <View className="flex-row items-center gap-3 px-4 py-3.5">
+                    <View className="h-[38px] w-[38px] items-center justify-center rounded-full bg-surface-low-light dark:bg-surface-low-dark">
+                      <Ionicons name={item.icon} size={18} color={P.primary} />
+                    </View>
+                    <View className="flex-1 gap-0.5">
+                      <AppText className="font-inter-medium text-sm">{item.label}</AppText>
+                      <AppText className="text-xs text-placeholder-light dark:text-placeholder-dark">{item.time}</AppText>
+                    </View>
+                    <Ionicons name="chevron-forward" size={16} color={P.placeholder} />
+                  </View>
+                  {i < recentActivity.length - 1 && <Divider />}
+                </View>
               ))}
-            </YStack>
-          </YStack>
+            </Card>
+          </View>
 
-          {/* ── Focus banner ── */}
-          <YStack backgroundColor={C.ink} borderRadius={18} paddingHorizontal={22} paddingVertical={28}
-                  gap={6} style={C.heroShadow}>
-            <Text fontSize={19} fontFamily="$body" fontWeight="600" color="white" letterSpacing={-0.3}>
-              Focus on your craft.
-            </Text>
-            <Text fontSize={13} fontFamily="$body" color="rgba(255,255,255,0.6)">
-              We&apos;ll handle the paperwork.
-            </Text>
-          </YStack>
-
-        </YStack>
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   );
 }

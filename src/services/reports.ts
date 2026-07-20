@@ -1,10 +1,5 @@
-import { api, getTokens, ApiError } from '@/src/services/api';
-import { Platform } from 'react-native';
+import { api, getTokens, ApiError, BASE_URL } from '@/src/services/api';
 import { File, Paths } from 'expo-file-system';
-
-// ponytail: mirrors api.ts's dev-only host resolution — kept local since exportCsv needs a raw
-// (non-JSON) fetch that api.ts's apiFetch doesn't support.
-const BASE_URL = Platform.OS === 'android' ? 'http://10.0.2.2:8080/api/v1' : 'http://localhost:8080/api/v1';
 
 export interface ExpensePeriod {
   period: string;

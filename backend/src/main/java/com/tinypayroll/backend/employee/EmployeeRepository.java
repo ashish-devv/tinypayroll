@@ -19,4 +19,8 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     List<Employee> findByBusinessIdAndStatus(Long businessId, EmployeeStatus status);
 
     List<Employee> findByIdInAndBusinessId(List<Long> ids, Long businessId);
+
+    boolean existsByBusinessIdAndRoleIgnoreCase(Long businessId, String role);
+
+    boolean existsByBusinessIdAndDepartmentIgnoreCase(Long businessId, String department);
 }

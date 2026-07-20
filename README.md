@@ -4,7 +4,7 @@
 
 TinyPayroll is a full-stack payroll app aimed at small business owners — bakeries, traders, small retail, service shops — who need to mark attendance, run payroll once a month, and hand out payslips without a finance team or a DBA. It is a **React Native / Expo** mobile app backed by a **Spring Boot** REST API.
 
-- **Mobile app** — Expo 54, expo-router, React 19, Tamagui. Runs on Android, iOS, and web from one codebase.
+- **Mobile app** — Expo 54, expo-router, React 19, NativeWind v4 (Tailwind). Runs on Android, iOS, and web from one codebase.
 - **Backend** — Spring Boot 4 (Java 21), PostgreSQL, JWT auth, multi-tenant, in `backend/`.
 
 ---
@@ -20,7 +20,7 @@ TinyPayroll is a full-stack payroll app aimed at small business owners — baker
   - [1. Run the backend](#1-run-the-backend)
   - [2. Run the mobile app](#2-run-the-mobile-app)
   - [Pointing the app at the backend](#pointing-the-app-at-the-backend)
-- [Design system — "Calm Precision"](#design-system--calm-precision)
+- [Design system — "Precision & Grace"](#design-system--precision--grace)
 - [Salary formula](#salary-formula)
 - [Building an installable Android APK](#building-an-installable-android-apk)
 - [Project conventions](#project-conventions)
@@ -72,10 +72,11 @@ All screens are built and support both light and dark mode.
 **Mobile app**
 - [Expo](https://docs.expo.dev/versions/v54.0.0/) 54 · React Native 0.81 · React 19
 - [expo-router](https://docs.expo.dev/router/introduction/) — file-based routing (typed routes enabled)
-- [Tamagui](https://tamagui.dev/) — UI library and styling
+- [NativeWind](https://www.nativewind.dev/) v4 — Tailwind-based styling (design tokens in `tailwind.config.js`)
+- `react-native-reanimated` + `react-native-gesture-handler` — slide-in sidebar (edge-swipe + hamburger)
 - New Architecture enabled
 - `expo-secure-store` for token storage (with a localStorage fallback on web)
-- Fonts: **Inter** (headings + body), **Geist** (numeric/money data)
+- Fonts: **Roboto** (UI + body), **JetBrains Mono** (numeric/money data)
 
 **Backend** (`backend/`)
 - Spring Boot 4.1 · Java 21
@@ -101,7 +102,7 @@ tinyPayroll/
 │   ├── services/            # API layer (api.ts + one file per domain)
 │   ├── types/index.ts       # shared domain types (the API contract)
 │   ├── utils/payroll.ts      # salary formula (pure, unit-asserted)
-│   └── theme/               # Tamagui config (fonts, tokens)
+│   └── components/ui/       # shared NativeWind UI (Screen, Card, TopBar, Sidebar, palette…)
 ├── assets/                  # icons, splash, images
 ├── backend/                 # Spring Boot API (see backend/APIS.md)
 ├── CLAUDE.md                # engineering guide (design system, conventions)
@@ -175,17 +176,16 @@ const BASE_URL = Platform.OS === 'android'
 
 ---
 
-## Design system — "Calm Precision"
+## Design system — "Precision & Grace"
 
 The full design guide lives in [`CLAUDE.md`](CLAUDE.md). In short:
 
-- **Fonts** — Inter (UI + body), Geist (numbers/money)
-- **Primary** — Ink Indigo `#1a1f2c`
-- **Accent** — Gold `#d4af37` for money values, the active tab, and primary CTAs
-- **Light** bg `#f8f9ff` / surface `#ffffff`; **Dark** bg `#0d0f14` / surface `#161a24`
+- **Fonts** — Roboto (UI + body), JetBrains Mono (numbers/money)
+- **Primary** — Indigo `#6366f1`
+- **Secondary** — Electric Blue `#0ea5e9`
 - **Radius** — 14–18px cards, 10–12px buttons/inputs, pill (`9999`) for chips
 
-Every screen implements light + dark via a local `useC()` hook keyed off `useColorScheme()` — colors are never hardcoded in JSX. Cards get a soft shadow (`cardShadow`); ink hero cards and primary CTAs get a gold-glow shadow (`heroShadow`). See `CLAUDE.md` for the exact token table and the `useC()` implementation.
+Styling is done with **NativeWind v4** (Tailwind classes) — design tokens are defined as light/dark pairs in `tailwind.config.js` and applied via className with the `dark:` variant (driven automatically by `useColorScheme()`, no manual color hook). Shared UI primitives live in `src/components/ui/` (`Screen`, `Card`, `AppText`, `TopBar`, `Sidebar`, `usePalette`, `useShadows`). See `CLAUDE.md` for the exact token table.
 
 ---
 
@@ -246,13 +246,13 @@ cd android
 
 These keep the codebase consistent — see `CLAUDE.md` for the complete list.
 
-- **Layout** uses Tamagui `YStack` / `XStack`, not raw `View` (except for shadow wrappers and progress bars).
-- **Text** always uses `<Text fontFamily="$body">` so Tamagui resolves the Inter weight map.
-- **Colors** come from the local `useC()` hook as hex values — never custom Tamagui color tokens in JSX.
-- **Stack screen headers** are defined once in `app/_layout.tsx`; don't add a manual top bar inside those screens.
-- **Bottom sheets** use an absolute-positioned `View` — the Tamagui `Sheet` crashes with `setValue`.
-- **Password / keyboard-type inputs** use React Native's native `<TextInput>`, because Tamagui's `<Input>` drops `secureTextEntry` / `keyboardType` (Tamagui issues #2926, #3598).
-- Every new screen: pull the design from the Stitch source, match the layout, implement dark mode via `useC()`, and add the appropriate shadows and press-in scale on tappable cards.
+- **Layout** uses raw `View` from `react-native` + `className` (`flex-row` for rows) — NativeWind, not a component library.
+- **Text** uses `<AppText className="…">` from `src/components/ui` — defaults to Roboto + primary text color; add `font-mono` for numeric/money data.
+- **Colors** come from token classes (`bg-surface-light dark:bg-surface-dark`, etc.) — never hardcode design hex in className. Use `usePalette()` hex only where className can't reach (Ionicons `color`, native `style`, `placeholderTextColor`, StatusBar, attendance status).
+- **Dark mode** is the `dark:` variant, driven automatically by `useColorScheme()` — no manual light/dark color hook.
+- **Tab headers** use the shared `<TopBar>`; **Stack screen headers** are defined once in `app/_layout.tsx` — don't hand-roll a top bar inside those screens.
+- **Bottom-sheet / success overlays** use an absolute-positioned `View` (`className="absolute inset-0 …"`), never a Modal.
+- Every new screen: pull the design from the Stitch source, match the layout, use `Screen`/`Card`/`AppText`, implement dark mode via `dark:` classes, and add press-in scale (`pressScale`) on tappable cards.
 
 ---
 
@@ -260,7 +260,7 @@ These keep the codebase consistent — see `CLAUDE.md` for the complete list.
 
 | Doc | What's in it |
 |---|---|
-| [`CLAUDE.md`](CLAUDE.md) | Engineering guide — design system, `useC()` hook, architecture, screen build status, conventions |
+| [`CLAUDE.md`](CLAUDE.md) | Engineering guide — design system, NativeWind tokens, shared UI, architecture, screen build status, conventions |
 | [`PRD.md`](PRD.md) | Backend product & technical requirements — domain model, security, API design, roadmap |
 | [`TASKS.md`](TASKS.md) | Frontend ↔ backend wiring tracker (which screens are on real APIs) |
 | [`backend/APIS.md`](backend/APIS.md) | Complete REST API reference with request/response shapes |

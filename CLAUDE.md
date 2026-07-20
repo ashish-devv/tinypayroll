@@ -29,7 +29,7 @@ Design system: **"Calm Precision"**
 
 ## Dark mode
 
-**All screens must support both light and dark mode.** Use the `useC()` hook pattern — define both variants keyed off `useColorScheme()`. Never hardcode colors directly in JSX; always go through `C`.
+**All screens must support both light and dark mode.** Style with NativeWind classes and the `dark:` variant (driven automatically by `useColorScheme`). Never hardcode design hex in JSX className — use the token classes below.
 
 | Light token | Dark equivalent |
 |-------------|----------------|
@@ -42,50 +42,47 @@ Design system: **"Calm Precision"**
 | `#1a1f2c` ink | stays `#1a1f2c` |
 | `#d4af37` gold | stays `#d4af37` |
 
-Full `useC()` hook used in every screen:
+## Dark mode
 
-```tsx
-import { useColorScheme } from 'react-native';
+**All screens must support both light and dark mode.** Styling is done with **NativeWind v4** (Tailwind classes). Dark mode uses the `dark:` variant, which follows the system `useColorScheme` automatically — never build a manual light/dark hook for colors in JSX.
 
-function useC() {
-  const dark = useColorScheme() === 'dark';
-  return {
-    bg:          dark ? '#0d0f14' : '#f8f9ff',
-    surface:     dark ? '#161a24' : '#ffffff',
-    surfaceLow:  dark ? '#1e2235' : '#eff4ff',
-    text:        dark ? '#e8eaf0' : '#0b1c30',
-    muted:       dark ? '#8b8fa8' : '#45464c',
-    placeholder: dark ? '#555a72' : '#9ba1b0',
-    border:      dark ? '#2a2f3e' : '#e0e3ea',
-    ink:         '#1a1f2c',
-    gold:        '#d4af37',
-    goldBg:      dark ? '#2a2410' : '#fdf6d8',
-    // shadows — apply via style prop on YStack
-    cardShadow: {
-      shadowColor: dark ? '#000000' : '#1a1f2c',
-      shadowOpacity: dark ? 0.28 : 0.07,
-      shadowRadius: 10,
-      shadowOffset: { width: 0, height: 3 },
-      elevation: dark ? 5 : 2,
-    } as const,
-    heroShadow: {   // gold glow — use on ink CTAs and hero cards
-      shadowColor: '#d4af37',
-      shadowOpacity: dark ? 0.28 : 0.2,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 6 },
-      elevation: dark ? 10 : 6,
-    } as const,
-  };
-}
-```
+Design tokens are defined in `tailwind.config.js` as light/dark pairs. Use them via className:
+
+| Purpose | className |
+|---------|-----------|
+| app bg | `bg-canvas-light dark:bg-canvas-dark` |
+| surface/card | `bg-surface-light dark:bg-surface-dark` |
+| surface-low | `bg-surface-low-light dark:bg-surface-low-dark` |
+| primary text | `text-text-light dark:text-text-dark` (AppText default) |
+| muted text | `text-muted-light dark:text-muted-dark` |
+| placeholder | `text-placeholder-light dark:text-placeholder-dark` |
+| border | `border-border-light dark:border-border-dark` |
+| ink (mode-invariant) | `bg-ink` / `text-ink` |
+| gold (mode-invariant) | `bg-gold` / `text-gold` |
+| gold tint bg | `bg-gold-bg-light dark:bg-gold-bg-dark` |
+
+**Font: Roboto** for all UI text, **JetBrains Mono** for numeric/currency data. The legacy `font-inter*` / `font-jakarta*` classes are repointed to Roboto weights in `tailwind.config.js` (400/500/600/700/800), so existing className usage keeps working — you don't have to rename classes across screens. `font-geist`/`font-mono` → JetBrains Mono. Radius: `rounded-card` (14), `rounded-card-lg` (18), `rounded-input` (10), `rounded-button` (12), `rounded-full` (pills).
+
+### Shared UI components — `src/components/ui/`
+
+Prefer these over raw primitives:
+- `<Screen variant="canvas"|"surface" edges={...}>` — SafeAreaView + standard background
+- `<Card variant="surface"|"ink">` — bakes in border, radius, and the correct shadow. Do **not** re-add borders/shadows on a Card.
+- `<AppText className="...">` — defaults to Roboto + primary text color
+- `<Divider />` — hairline separator
+- `<TopBar title variant="surface"|"glass" onSettings? onNotifications? />` — the shared header for all 5 tab screens. Renders a hamburger (☰) that opens the sidebar via `useSidebar().open()`, the TP badge + title, and optional bell/gear on the right. Use `variant="glass"` for the Dashboard's translucent bar. Do **not** hand-roll a tab header — use this so all tabs stay consistent.
+- `<SidebarProvider>` + `useSidebar()` — the slide-in drawer. `SidebarProvider` wraps `<Tabs>` (in `app/(tabs)/_layout.tsx`, inside `AuthProvider`); it opens on hamburger tap or a left-edge swipe, closes on backdrop tap / drag. NAV array is extensible (Dashboard, Business Settings today); Log Out pinned at the bottom calls `signOut`. Requires `GestureHandlerRootView` at the app root (already wired in `app/_layout.tsx`).
+- `usePalette()` → `P` — raw hex values for things that **cannot** take a className: Ionicons `color`, native `style` props, `placeholderTextColor`, StatusBar, and `P.status.*` (attendance).
+- `useShadows()` → `{ card, hero }` — apply via `style` on a non-Card `View`.
+- `pressScale` — `style={pressScale}` for press-in scale on tappable Pressables.
 
 ### Shadow rules
-- Surface/white cards → `style={C.cardShadow}`
-- Ink hero cards + primary CTAs → `style={C.heroShadow}` (gold glow)
-- Press-in effect on tappable cards: `style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}`
+- Surface/white cards → use `<Card>` (or `style={useShadows().card}` on a raw View)
+- Ink hero cards + primary CTAs → `<Card variant="ink">` (or `style={useShadows().hero}`) — gold glow
+- Press-in effect on tappable cards: `style={pressScale}` (scales to 0.97 when pressed)
 
 ### Attendance status colours
-Status cell backgrounds must be **saturated in dark mode** (not pastels — they're invisible on `#161a24`). Always define inside `useC()`:
+Status cell backgrounds must be **saturated in dark mode** (not pastels — they're invisible on `#161a24`). These come from `usePalette().status` (applied via `style`, not className, so dark values stay saturated):
 
 ```ts
 status: {
@@ -99,7 +96,7 @@ status: {
 
 ## Architecture
 
-Expo 54, expo-router (file-based routing), React 19, React Native 0.81, **Tamagui** UI library, New Architecture + React Compiler enabled.
+Expo 54, expo-router (file-based routing), React 19, React Native 0.81, **NativeWind v4** (Tailwind) for styling, New Architecture enabled.
 
 **Path alias:** `@/` → repo root.
 
@@ -107,7 +104,8 @@ Expo 54, expo-router (file-based routing), React 19, React Native 0.81, **Tamagu
 
 ```
 app/
-  _layout.tsx           # Root Stack — Inter/Geist fonts, TamaguiProvider (light forced),
+  _layout.tsx           # Root Stack — imports global.css, Roboto + JetBrains Mono fonts,
+                        #   GestureHandlerRootView wrapper (for sidebar swipe),
                         #   DarkTheme/DefaultTheme from @react-navigation/native,
                         #   scheme-aware headerStyle on all Stack screens, StatusBar style auto
   (tabs)/
@@ -130,30 +128,31 @@ app/
 
 ```
 src/
-  theme/
-    tamagui.config.ts   # Inter_400Regular as base family, face map for 500/600/700, Geist_500Medium mono
+  components/
+    ui/                 # shared NativeWind UI: Screen, Card, AppText, Divider, Button, Chip,
+                        #   TopBar, Sidebar (SidebarProvider/useSidebar), palette, shadows
   types/
     index.ts            # Employee, PayrollRun, AttendanceRecord, BusinessConfig, PayrollAdjustment
   utils/
     payroll.ts          # calculateFinalSalary(), buildPayrollItem(), formatCurrency() — pure, assert at bottom
   data/
     mock.ts             # 5 employees, 3 payroll runs (Jun pending, May/Apr paid), attendance records
-  components/           # shared UI (empty — add as needed)
   services/             # Firebase stubs (empty — future)
 ```
 
-### Tamagui rules
+Styling config lives at the repo root: `tailwind.config.js` (design tokens), `global.css`, `metro.config.js` (`withNativeWind`), `babel.config.js` (`nativewind/babel` + `jsxImportSource`).
 
-- Layout: `YStack` / `XStack` — never raw `View` for structural layout (exception: shadows on cards, progress bars)
-- Text: always `<Text fontFamily="$body">` — Tamagui resolves Inter via the `face` weight map
-- **Never** use `$textPrimary`, `$inkIndigo` or other custom color tokens in JSX — use `C` hex values
-- Radius: `borderRadius={14}` cards, `borderRadius={10}` inputs/buttons, `borderRadius={9999}` pills
-- `Separator` from tamagui for dividers
-- Tamagui `Sheet` crashes with `setValue` — use absolute-positioned `View` for bottom sheet overlays
+### NativeWind rules
+
+- Layout: raw `View` from `react-native` + `className`. Column is default; add `flex-row` for rows. (Old `YStack`→`View`, `XStack`→`View className="flex-row"`.)
+- Text: `<AppText className="...">` from `@/src/components/ui` — defaults to Inter + primary text color. Numeric/money data → add `font-geist`.
+- Never hardcode design hex in JSX className — use the token classes from the Dark mode table. Use `usePalette()` hex only where className can't reach (Ionicons color, native `style`, `placeholderTextColor`, StatusBar, attendance status).
+- `<Divider />` for dividers.
+- **Bottom-sheet / success overlays:** use an absolute-positioned `View` (`className="absolute inset-0 ..."`), never a Modal — matches the pre-existing pattern in `payroll/review.tsx`.
 
 ### Stack screen headers
 
-All Stack screens (employees/add, payroll/review, payroll/payslip, settings/business) get their header from `_layout.tsx` — **do not add a manual top-bar XStack inside these screens**. Use `edges={['bottom']}` on `SafeAreaView` to avoid double padding.
+All Stack screens (employees/add, payroll/review, payroll/payslip, settings/business) get their header from `_layout.tsx` — **do not add a manual top bar inside these screens**. Use `<Screen edges={['bottom']}>` to avoid double padding.
 
 ### Salary formula
 
@@ -177,4 +176,4 @@ Implemented in `src/utils/payroll.ts`. Always compute here, never inline in comp
 | Reports | `(tabs)/reports.tsx` | ✅ |
 | Business Config | `settings/business.tsx` | ✅ |
 
-For any new screen: pull from Stitch MCP first, match layout, implement dark mode via `useC()`, add `cardShadow`/`heroShadow`, add press-in scale on tappable cards.
+For any new screen: pull from Stitch MCP first, match layout, use `<Screen>`/`<Card>`/`<AppText>` from `src/components/ui`, implement dark mode via `dark:` classes, add press-in scale (`style={pressScale}`) on tappable cards.

@@ -1,8 +1,6 @@
-import { YStack, XStack, Text } from 'tamagui';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Pressable, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { Pressable, useColorScheme, useWindowDimensions } from 'react-native';
 import { useRef, useState } from 'react';
 import * as Haptics from 'expo-haptics';
 import Animated, {
@@ -14,27 +12,8 @@ import Animated, {
   Extrapolation,
 } from 'react-native-reanimated';
 
+import { Screen, AppText, usePalette, useShadows } from '@/src/components/ui';
 import { useAuth } from '@/src/services/auth';
-
-function useC() {
-  const dark = useColorScheme() === 'dark';
-  return {
-    bg:          dark ? '#0d0f14' : '#f8f9ff',
-    surfaceLow:  dark ? '#1e2235' : '#eff4ff',
-    text:        dark ? '#e8eaf0' : '#0b1c30',
-    muted:       dark ? '#8b8fa8' : '#45464c',
-    border:      dark ? '#2a2f3e' : '#e0e3ea',
-    ink:         '#1a1f2c',
-    gold:        '#d4af37',
-    heroShadow: {
-      shadowColor: '#d4af37',
-      shadowOpacity: dark ? 0.28 : 0.2,
-      shadowRadius: 18,
-      shadowOffset: { width: 0, height: 6 },
-      elevation: dark ? 10 : 6,
-    } as const,
-  };
-}
 
 const SLIDES = [
   {
@@ -59,13 +38,14 @@ const SLIDES = [
   },
 ];
 
-function Slide({ item, index, scrollX, width, C }: {
+function Slide({ item, index, scrollX, width }: {
   item: typeof SLIDES[number];
   index: number;
   scrollX: Animated.SharedValue<number>;
   width: number;
-  C: ReturnType<typeof useC>;
 }) {
+  const P = usePalette();
+  const shadows = useShadows();
   const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
 
   const iconStyle = useAnimatedStyle(() => ({
@@ -82,41 +62,40 @@ function Slide({ item, index, scrollX, width, C }: {
   }));
 
   return (
-    <YStack width={width} alignItems="center" justifyContent="center" paddingHorizontal={32} gap={32}>
+    <View className="items-center justify-center gap-8 px-8" style={{ width }}>
       <Animated.View style={[{
         width: 140, height: 140, borderRadius: 70,
-        backgroundColor: C.ink, alignItems: 'center', justifyContent: 'center',
-      }, C.heroShadow, iconStyle]}>
-        <Ionicons name={item.icon} size={56} color={C.gold} />
+        backgroundColor: P.primary, alignItems: 'center', justifyContent: 'center',
+      }, shadows.hero, iconStyle]}>
+        <Ionicons name={item.icon} size={56} color="#ffffff" />
       </Animated.View>
       <Animated.View style={textStyle}>
-        <YStack gap={10} alignItems="center">
-          <Text fontSize={24} fontFamily="$body" fontWeight="700" color={C.text}
-                textAlign="center" letterSpacing={-0.3}>
+        <View className="items-center gap-2.5">
+          <AppText className="text-center font-inter-bold text-2xl tracking-[-0.3px]">
             {item.title}
-          </Text>
-          <Text fontSize={14} fontFamily="$body" color={C.muted} textAlign="center" lineHeight={21}>
+          </AppText>
+          <AppText className="text-center text-sm leading-[21px] text-muted-light dark:text-muted-dark">
             {item.subtitle}
-          </Text>
-        </YStack>
+          </AppText>
+        </View>
       </Animated.View>
-    </YStack>
+    </View>
   );
 }
 
-function Dot({ index, scrollX, width, C }: {
-  index: number; scrollX: Animated.SharedValue<number>; width: number; C: ReturnType<typeof useC>;
+function Dot({ index, scrollX, width }: {
+  index: number; scrollX: Animated.SharedValue<number>; width: number;
 }) {
+  const P = usePalette();
   const inputRange = [(index - 1) * width, index * width, (index + 1) * width];
   const style = useAnimatedStyle(() => ({
     width: interpolate(scrollX.value, inputRange, [8, 24, 8], Extrapolation.CLAMP),
-    backgroundColor: interpolateColor(scrollX.value, inputRange, [C.border, C.gold, C.border]),
+    backgroundColor: interpolateColor(scrollX.value, inputRange, [P.border, P.primary, P.border]),
   }));
   return <Animated.View style={[{ height: 8, borderRadius: 4 }, style]} />;
 }
 
 export default function OnboardingScreen() {
-  const C = useC();
   const router = useRouter();
   const { completeOnboarding } = useAuth();
   const { width } = useWindowDimensions();
@@ -140,13 +119,15 @@ export default function OnboardingScreen() {
     router.replace('/login');
   }
 
+  const shadows = useShadows();
+
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
-      <XStack justifyContent="flex-end" paddingHorizontal={20} paddingTop={8}>
+    <Screen>
+      <View className="flex-row justify-end px-5 pt-2">
         <Pressable onPress={finish} hitSlop={12}>
-          <Text fontSize={14} fontFamily="$body" fontWeight="600" color={C.muted}>Skip</Text>
+          <AppText className="font-inter-semibold text-sm text-muted-light dark:text-muted-dark">Skip</AppText>
         </Pressable>
-      </XStack>
+      </View>
 
       <Animated.ScrollView
         ref={scrollRef}
@@ -159,30 +140,29 @@ export default function OnboardingScreen() {
         style={{ flex: 1 }}
       >
         {SLIDES.map((item, i) => (
-          <Slide key={item.title} item={item} index={i} scrollX={scrollX} width={width} C={C} />
+          <Slide key={item.title} item={item} index={i} scrollX={scrollX} width={width} />
         ))}
       </Animated.ScrollView>
 
-      <YStack paddingHorizontal={24} paddingBottom={20} gap={28}>
-        <XStack justifyContent="center" alignItems="center" gap={8}>
+      <View className="gap-7 px-6 pb-5">
+        <View className="flex-row items-center justify-center gap-2">
           {SLIDES.map((item, i) => (
-            <Dot key={item.title} index={i} scrollX={scrollX} width={width} C={C} />
+            <Dot key={item.title} index={i} scrollX={scrollX} width={width} />
           ))}
-        </XStack>
+        </View>
 
         <Pressable
           onPress={() => (isLast ? finish() : goTo(index + 1))}
           style={({ pressed }) => ({ transform: [{ scale: pressed ? 0.97 : 1 }] })}
         >
-          <XStack backgroundColor={C.ink} borderRadius={14} paddingVertical={16}
-                  alignItems="center" justifyContent="center" gap={8} style={C.heroShadow}>
-            <Text fontSize={15} fontFamily="$body" fontWeight="600" color="white">
+          <View className="flex-row items-center justify-center gap-2 rounded-card bg-primary py-4" style={shadows.hero}>
+            <AppText className="font-inter-semibold text-[15px] text-white">
               {isLast ? 'Get Started' : 'Next'}
-            </Text>
+            </AppText>
             <Ionicons name={isLast ? 'checkmark-circle-outline' : 'arrow-forward'} size={18} color="white" />
-          </XStack>
+          </View>
         </Pressable>
-      </YStack>
-    </SafeAreaView>
+      </View>
+    </Screen>
   );
 }

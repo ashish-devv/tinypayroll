@@ -29,7 +29,7 @@ import lombok.ToString;
 @Entity
 @Table(
         name = "payroll_run",
-        uniqueConstraints = @UniqueConstraint(name = "uk_payroll_run_period", columnNames = {"business_id", "month", "year"}),
+        uniqueConstraints = @UniqueConstraint(name = "uk_payroll_run_period", columnNames = {"business_id", "month", "year", "deleted_at"}),
         indexes = @Index(name = "idx_payroll_run_business_id", columnList = "business_id"))
 @NoArgsConstructor
 @AllArgsConstructor
@@ -64,6 +64,10 @@ public class PayrollRun extends BaseEntity {
     private LocalDate runDate;
 
     private Instant paidAt;
+
+    /** Soft-delete marker — null means live. Deleted runs are hidden from list/get/reports. */
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 
     @Column(name = "created_by_user_id", nullable = false)
     private Long createdByUserId;

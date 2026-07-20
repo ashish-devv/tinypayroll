@@ -2,10 +2,26 @@
 
 export type EmployeeStatus = 'active' | 'inactive';
 
+export interface Department {
+  id: string;
+  name: string;
+}
+
+export interface Designation {
+  id: string;
+  departmentId?: string;
+  name: string;
+  defaultSalary?: number;
+  defaultSalaryType?: 'MONTHLY' | 'DAILY';
+}
+
 export interface Employee {
   id: string;
   name: string;
   role: string;
+  department?: string;
+  departmentId?: string;
+  designationId?: string;
   baseSalary: number;       // monthly base in local currency
   salaryType?: 'MONTHLY' | 'DAILY';
   avatarInitials: string;

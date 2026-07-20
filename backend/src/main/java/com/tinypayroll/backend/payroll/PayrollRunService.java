@@ -68,7 +68,7 @@ public class PayrollRunService {
 
     @Transactional(readOnly = true)
     public List<PayrollRunSummaryResponse> list(Long businessId) {
-        return payrollRunRepository.findByBusinessIdOrderByYearDescMonthDesc(businessId).stream()
+        return payrollRunRepository.findByBusinessIdAndDeletedAtIsNullOrderByYearDescMonthDesc(businessId).stream()
                 .map(run -> new PayrollRunSummaryResponse(
                         run.getId(),
                         run.getPeriod(),
@@ -92,7 +92,7 @@ public class PayrollRunService {
     @Transactional
     public PayrollRunResponse create(Long businessId, Long createdByUserId, CreatePayrollRunRequest request) {
         payrollRunRepository
-                .findByBusinessIdAndMonthAndYear(businessId, request.month(), request.year())
+                .findByBusinessIdAndMonthAndYearAndDeletedAtIsNull(businessId, request.month(), request.year())
                 .ifPresent(existing -> {
                     throw new ConflictException(
                             "Payroll run already exists for " + request.month() + "/" + request.year());
@@ -197,6 +197,16 @@ public class PayrollRunService {
         return toResponse(run, employeesById(businessId));
     }
 
+    /** Soft-delete — stamps deletedAt so the run is hidden from list/get/reports. Any status. */
+    @PreAuthorize("hasAnyRole('OWNER','ADMIN')")
+    @Auditable(action = "DELETE_PAYROLL_RUN", entityType = "PayrollRun")
+    @Transactional
+    public void delete(Long runId, Long businessId) {
+        PayrollRun run = findRun(runId, businessId);
+        run.setDeletedAt(Instant.now());
+        payrollRunRepository.save(run);
+    }
+
     @Transactional(readOnly = true)
     public PayslipResponse payslip(Long runId, Long employeeId, Long businessId) {
         PayrollRun run = findRun(runId, businessId);
@@ -231,7 +241,7 @@ public class PayrollRunService {
 
     private PayrollRun findRun(Long id, Long businessId) {
         return payrollRunRepository
-                .findByIdAndBusinessId(id, businessId)
+                .findByIdAndBusinessIdAndDeletedAtIsNull(id, businessId)
                 .orElseThrow(() -> NotFoundException.of("PayrollRun", id));
     }
 
