@@ -28,6 +28,9 @@ export default function ReviewPayrollScreen() {
 
   useEffect(() => {
     if (!runId) return;
+    // The run is a snapshot: its items are whoever was active when it was created. Load ALL
+    // employees just to resolve names/roles — someone active at creation but deactivated since
+    // must still appear here. Membership is never re-filtered by current status.
     Promise.all([getPayrollRun(runId), listEmployees()])
       .then(([r, emps]) => { setRun(r); setEmployees(emps); })
       .catch((e) => setError(e instanceof Error ? e.message : 'Could not load payroll run'))

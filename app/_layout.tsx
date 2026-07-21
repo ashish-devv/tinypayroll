@@ -60,6 +60,7 @@ function RootNavigator() {
         <Stack.Screen name="payroll/payslip" options={{ title: 'Payslip', ...headerOpts }} />
         <Stack.Screen name="settings/business" options={{ title: 'Business Configuration', ...headerOpts, headerLeft: backHeaderLeft }} />
         <Stack.Screen name="settings/catalog" options={{ title: 'Departments & Roles', ...headerOpts, headerLeft: backHeaderLeft }} />
+        <Stack.Screen name="activity" options={{ title: 'All Activity', ...headerOpts, headerLeft: backHeaderLeft }} />
       </Stack.Protected>
       <Stack.Protected guard={!isAuthenticated && !hasOnboarded}>
         <Stack.Screen name="onboarding" options={{ headerShown: false }} />

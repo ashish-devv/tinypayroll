@@ -177,7 +177,7 @@ Returns full `PayrollRunResponse` including `items: List<PayrollRunItemResponse>
 { "month": 6, "year": 2026 }
 // 201 -> PayrollRunResponse (status DRAFT)
 ```
-Accepts any past or future period. Auto-seeds items from attendance: `unpaidLeave = absentDays × dailyRate` (`dailyRate = baseSalary / workingDaysPerMonth` for MONTHLY, or `baseSalary` for DAILY). Rejects with 409 if a **live** (non-deleted) run already exists for that month/year — a soft-deleted period can be recreated.
+Accepts any past or future period. **Snapshot at creation:** items are seeded only for employees who are **ACTIVE** at the moment the run is created (`findByBusinessIdAndStatus(businessId, ACTIVE)`) — later hires/status changes do not retroactively alter an existing run. Auto-seeds items from attendance: `unpaidLeave = absentDays × dailyRate` (`dailyRate = baseSalary / workingDaysPerMonth` for MONTHLY, or `baseSalary` for DAILY). Rejects with 409 if a **live** (non-deleted) run already exists for that month/year — a soft-deleted period can be recreated.
 
 ### PUT /payroll-runs/{runId}/items/{itemId} — OWNER/ADMIN
 ```json
@@ -233,9 +233,22 @@ Any other `type` value returns **400 Bad Request** with a message.
 
 All errors (validation, not-found, conflict, forbidden, auth) return the same `ApiError` JSON via `GlobalExceptionHandler` — status code varies (400/401/403/404/409).
 
-## Audit trail (not an API — background effect)
+## audit-logs (activity feed) — requires auth
 
-Every employee create/update/delete, business config update, and payroll run create/adjust/finalize call is logged to `AuditLog` (business_id, user_id, action, entityType, newValue, ipAddress, timestamp) automatically via AOP. No endpoint currently exposes reading it back.
+Every employee create/update/delete, business config update, and payroll run create/adjust/finalize call is logged to `AuditLog` (business_id, user_id, action, entityType, newValue, ipAddress, timestamp) automatically via AOP (`@Auditable` → `AuditAspect`, best-effort in a `REQUIRES_NEW` tx so a logging failure never breaks the request).
+
+### GET /audit-logs?page=0&size=20
+Read-only, business-scoped, newest first. Backs the app's **Recent Activity** button and the **All Activity** screen (`app/activity.tsx`). Paginated (`Pageable`, `size` capped at **100**); returns `PageResponse<AuditLogResponse>`:
+```json
+{
+  "content": [
+    { "id": 42, "action": "CREATE_EMPLOYEE", "entityType": "Employee", "entityId": 8,
+      "entityLabel": "Ravi Kumar", "createdAt": "2026-07-21T09:15:00Z" }
+  ],
+  "page": 0, "size": 20, "totalElements": 1, "totalPages": 1
+}
+```
+`entityLabel` is a best-effort display name derived server-side from the logged `newValue` JSON; may be `null`. The client maps `action` → an icon + human phrasing (`src/services/activity.ts`) and caches each page for **10s** (stale-while-dedup) to spare the DB. Only the current tenant's rows are returned.
 
 ---
 

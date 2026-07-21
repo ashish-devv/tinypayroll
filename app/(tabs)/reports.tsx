@@ -10,11 +10,15 @@ import { listEmployees } from '@/src/services/employees';
 import type { Employee, PayrollRun } from '@/src/types';
 import type { ExpenseSummary } from '@/src/services/reports';
 
+const CHART_H = 92; // px — bar track height
+
 function SpendBar({ value, max, color }: { value: number; max: number; color: string }) {
-  const pct = max > 0 ? Math.max(0.04, value / max) : 0.04;
+  // Absolute px height instead of a percentage string: RN doesn't reliably resolve
+  // `height: '%'` when the parent's height isn't definite, which left bars invisible.
+  const pct = max > 0 ? Math.max(0.06, value / max) : 0.06;
   return (
-    <View style={{ flex: 1, height: 80, justifyContent: 'flex-end', alignItems: 'center' }}>
-      <View style={{ width: '72%', height: `${Math.round(pct * 100)}%`, backgroundColor: color, borderRadius: 4 }} />
+    <View style={{ width: '100%', height: CHART_H, justifyContent: 'flex-end', alignItems: 'center' }}>
+      <View style={{ width: '68%', height: Math.round(CHART_H * pct), minHeight: 4, backgroundColor: color, borderRadius: 4 }} />
     </View>
   );
 }
@@ -125,6 +129,7 @@ export default function ReportsScreen() {
   }
 
   const trend = summary.periods.map((p) => ({
+    key: p.period,
     label: p.period.split(' ')[0].slice(0, 3),
     amount: p.totalAmount,
     paid: p.status === 'PAID',
@@ -187,14 +192,23 @@ export default function ReportsScreen() {
               Monthly Payroll Trend
             </AppText>
 
-            <View className="h-24 flex-row items-end gap-2">
-              {trend.map((t) => (
-                <View key={t.label} className="flex-1 items-center gap-1.5">
-                  <SpendBar value={t.amount} max={maxAmount} color={t.paid ? P.primary : P.secondary} />
-                  <AppText className={`font-inter-semibold text-[11px] ${t.paid ? 'text-muted-light dark:text-muted-dark' : 'text-secondary'}`}>{t.label}</AppText>
-                </View>
-              ))}
-            </View>
+            {trend.length === 0 ? (
+              <View className="items-center justify-center py-8">
+                <Ionicons name="bar-chart-outline" size={22} color={P.placeholder} />
+                <AppText className="mt-2 text-[12px] text-muted-light dark:text-muted-dark">
+                  No payroll runs yet this year
+                </AppText>
+              </View>
+            ) : (
+              <View style={{ height: CHART_H + 22 }} className="flex-row items-end gap-2">
+                {trend.map((t) => (
+                  <View key={t.key} className="flex-1 items-center gap-1.5">
+                    <SpendBar value={t.amount} max={maxAmount} color={t.paid ? P.primary : P.secondary} />
+                    <AppText className={`font-inter-semibold text-[11px] ${t.paid ? 'text-muted-light dark:text-muted-dark' : 'text-secondary'}`}>{t.label}</AppText>
+                  </View>
+                ))}
+              </View>
+            )}
 
             <View className="flex-row gap-4">
               <View className="flex-row items-center gap-[5px]">
@@ -211,7 +225,7 @@ export default function ReportsScreen() {
 
             <View className="gap-2">
               {trend.map((t) => (
-                <View key={t.label} className="flex-row items-center justify-between">
+                <View key={t.key} className="flex-row items-center justify-between">
                   <View className="flex-row items-center gap-2">
                     <View className={`h-7 w-7 items-center justify-center rounded-lg ${t.paid ? 'bg-surface-low-light dark:bg-surface-low-dark' : 'bg-secondary-container-light dark:bg-secondary-container-dark'}`}>
                       <Ionicons name={t.paid ? 'checkmark-circle' : 'time-outline'}

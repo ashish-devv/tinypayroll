@@ -1,9 +1,9 @@
-import { ScrollView, View, Pressable, ActivityIndicator } from 'react-native';
+import { ScrollView, View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 
-import { Screen, Card, AppText, Divider, TopBar, usePalette, pressScale } from '@/src/components/ui';
+import { Screen, Card, AppText, TopBar, usePalette, pressScale, Skeleton } from '@/src/components/ui';
 import { getBusiness, type Business } from '@/src/services/business';
 import { listEmployees } from '@/src/services/employees';
 import { listAttendance } from '@/src/services/attendance';
@@ -17,13 +17,14 @@ function rupee(n: number) {
 }
 
 function todayIso() {
-  return new Date().toISOString().slice(0, 10);
+  // Local calendar date (NOT toISOString(), which is UTC). Attendance is marked/stored using the
+  // device's local Y-M-D (see attendance.tsx dateStr), so the dashboard must compare against the
+  // same local date — otherwise, in timezones ahead of UTC, the pre-dawn hours read "yesterday"
+  // and "Present Today" silently under-counts.
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
-
-const recentActivity = [
-  { id: '1', icon: 'time-outline'       as const, label: 'Overtime added for Rahul', time: '2 hours ago' },
-  { id: '2', icon: 'person-add-outline' as const, label: 'New employee: Priya',       time: 'Yesterday'  },
-];
 
 // Quick-action circle — the round icon buttons under the hero.
 function QuickAction({ icon, label, tint, bg, onPress }: {
@@ -43,15 +44,19 @@ function QuickAction({ icon, label, tint, bg, onPress }: {
   );
 }
 
-function StatCard({ label, value, sub }: { label: string; value: string; sub?: string }) {
+function StatCard({ label, value, sub, loading }: { label: string; value: string; sub?: string; loading?: boolean }) {
   return (
     <Card className="flex-1 p-4">
       <AppText className="font-inter-semibold text-[11px] uppercase tracking-[0.8px] text-muted-light dark:text-muted-dark">
         {label}
       </AppText>
-      <AppText className="mt-2 font-mono text-[28px] leading-[32px] tracking-[-1px] text-text-light dark:text-text-dark">
-        {value}
-      </AppText>
+      {loading ? (
+        <Skeleton width="60%" height={28} radius={6} style={{ marginTop: 8 }} />
+      ) : (
+        <AppText className="mt-2 font-mono text-[28px] leading-[32px] tracking-[-1px] text-text-light dark:text-text-dark">
+          {value}
+        </AppText>
+      )}
       {sub ? <AppText className="mt-0.5 text-[12px] text-muted-light dark:text-muted-dark">{sub}</AppText> : null}
     </Card>
   );
@@ -61,66 +66,68 @@ export default function DashboardScreen() {
   const router = useRouter();
   const P = usePalette();
 
+  // ── Core: business + employees + payroll runs. These drive the greeting, hero card and 3 of
+  // the 4 stat tiles, so they're clubbed into one request group and share one loading state —
+  // the "necessary" above-the-fold content appears together.
   const [business, setBusiness] = useState<Business | null>(null);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
   const [runs, setRuns] = useState<PayrollRun[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [coreLoading, setCoreLoading] = useState(true);
+  const [coreError, setCoreError] = useState<string | null>(null);
+
+  // ── Attendance: feeds only the "Present Today" tile. Loaded independently so a slow attendance
+  // query never holds back the hero/greeting.
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [attendanceLoading, setAttendanceLoading] = useState(true);
 
   useFocusEffect(useCallback(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
     const now = new Date();
-    Promise.all([
-      getBusiness(),
-      listEmployees('ACTIVE'),
-      listAttendance(now.getMonth() + 1, now.getFullYear()),
-      listPayrollRuns(),
-    ])
-      .then(([b, e, a, r]) => {
+
+    // Group 1 — core essentials, fetched together.
+    setCoreLoading(true);
+    setCoreError(null);
+    Promise.all([getBusiness(), listEmployees('ACTIVE'), listPayrollRuns()])
+      .then(([b, e, r]) => {
         if (cancelled) return;
         setBusiness(b);
         setEmployees(e);
-        setAttendance(a);
         setRuns(r);
       })
-      .catch((e) => { if (!cancelled) setError(e instanceof Error ? e.message : 'Could not load dashboard'); })
-      .finally(() => { if (!cancelled) setLoading(false); });
+      .catch((err) => { if (!cancelled) setCoreError(err instanceof Error ? err.message : 'Could not load dashboard'); })
+      .finally(() => { if (!cancelled) setCoreLoading(false); });
+
+    // Group 2 — attendance, on its own.
+    setAttendanceLoading(true);
+    listAttendance(now.getMonth() + 1, now.getFullYear())
+      .then((a) => { if (!cancelled) setAttendance(a); })
+      .catch(() => { if (!cancelled) setAttendance([]); })
+      .finally(() => { if (!cancelled) setAttendanceLoading(false); });
+
     return () => { cancelled = true; };
   }, []));
 
-  if (loading) {
-    return (
-      <Screen variant="surface">
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color={P.primary} />
-        </View>
-      </Screen>
-    );
-  }
+  const now = new Date();
+  const activeEmployees = employees;
+  const pendingRun = runs.find((r) => r.status === 'pending');
+  const currentPeriod = `${now.toLocaleString('en-US', { month: 'long' })} ${now.getFullYear()}`;
+  const monthExpense = runs.find((r) => r.period === currentPeriod)?.totalAmount ?? 0;
+  const today = todayIso();
+  const todayPresent = attendance.filter((a) => a.date === today && a.status === 'present').length;
 
-  if (error || !business) {
+  // Only a hard failure of the core group blocks the screen; attendance/activity degrade in place.
+  if (coreError && !business) {
     return (
       <Screen variant="surface">
         <View className="flex-1 items-center justify-center gap-3 p-6">
           <Ionicons name="alert-circle-outline" size={32} color={P.muted} />
           <AppText className="text-center text-sm text-muted-light dark:text-muted-dark">
-            {error ?? 'Could not load dashboard'}
+            {coreError}
           </AppText>
         </View>
       </Screen>
     );
   }
-
-  const activeEmployees = employees;
-  const pendingRun = runs.find((r) => r.status === 'pending');
-  const now = new Date();
-  const currentPeriod = `${now.toLocaleString('en-US', { month: 'long' })} ${now.getFullYear()}`;
-  const monthExpense = runs.find((r) => r.period === currentPeriod)?.totalAmount ?? 0;
-  const today = todayIso();
-  const todayPresent = attendance.filter((a) => a.date === today && a.status === 'present').length;
 
   return (
     <Screen variant="canvas">
@@ -138,12 +145,21 @@ export default function DashboardScreen() {
 
           {/* ── Greeting ── */}
           <View className="gap-1">
-            <AppText className="font-inter-extrabold text-[26px] tracking-[-0.5px]">
-              Good morning, {business.companyName}
-            </AppText>
-            <AppText className="text-[14px] text-muted-light dark:text-muted-dark">
-              Here&apos;s your business overview for {now.toLocaleString('en-US', { month: 'long' })}.
-            </AppText>
+            {coreLoading ? (
+              <>
+                <Skeleton width="70%" height={30} radius={8} />
+                <Skeleton width="55%" height={16} radius={6} style={{ marginTop: 6 }} />
+              </>
+            ) : (
+              <>
+                <AppText className="font-inter-extrabold text-[26px] tracking-[-0.5px]">
+                  Good morning, {business?.companyName}
+                </AppText>
+                <AppText className="text-[14px] text-muted-light dark:text-muted-dark">
+                  Here&apos;s your business overview for {now.toLocaleString('en-US', { month: 'long' })}.
+                </AppText>
+              </>
+            )}
           </View>
 
           {/* ── Hero payroll card ── */}
@@ -159,7 +175,7 @@ export default function DashboardScreen() {
                 <Ionicons name="cash-outline" size={20} color="rgba(255,255,255,0.7)" />
               </View>
               <AppText className="font-mono text-[36px] leading-[40px] tracking-[-1.5px] text-white">
-                {rupee(monthExpense)}
+                {coreLoading ? '—' : rupee(monthExpense)}
               </AppText>
               <Pressable
                 onPress={() => router.push('/payroll/review' as any)}
@@ -167,7 +183,7 @@ export default function DashboardScreen() {
               >
                 <View className="flex-row items-center justify-between rounded-input bg-white/15 px-4 py-3">
                   <AppText className="font-inter-medium text-[13px] text-white">
-                    Review payroll · {activeEmployees.length} employees
+                    {coreLoading ? 'Review payroll' : `Review payroll · ${activeEmployees.length} employees`}
                   </AppText>
                   <Ionicons name="arrow-forward" size={16} color="#ffffff" />
                 </View>
@@ -177,12 +193,12 @@ export default function DashboardScreen() {
 
           {/* ── Stat tiles ── */}
           <View className="flex-row gap-3">
-            <StatCard label="Active Staff" value={String(activeEmployees.length)} sub="Employees on payroll" />
-            <StatCard label="Present Today" value={`${todayPresent}/${activeEmployees.length}`} sub="Checked in" />
+            <StatCard label="Active Staff" value={String(activeEmployees.length)} sub="Employees on payroll" loading={coreLoading} />
+            <StatCard label="Present Today" value={`${todayPresent}/${activeEmployees.length}`} sub="Checked in" loading={coreLoading || attendanceLoading} />
           </View>
           <View className="flex-row gap-3">
-            <StatCard label="Pending" value={pendingRun ? rupee(pendingRun.totalAmount) : '₹0'} sub="Awaiting run" />
-            <StatCard label="This Month" value={rupee(monthExpense)} sub="Total cost" />
+            <StatCard label="Pending" value={pendingRun ? rupee(pendingRun.totalAmount) : '₹0'} sub="Awaiting run" loading={coreLoading} />
+            <StatCard label="This Month" value={rupee(monthExpense)} sub="Total cost" loading={coreLoading} />
           </View>
 
           {/* ── Quick actions ── */}
@@ -201,29 +217,20 @@ export default function DashboardScreen() {
           </View>
 
           {/* ── Recent activity ── */}
-          <View className="gap-3">
-            <View className="flex-row items-center justify-between">
-              <AppText className="font-inter-semibold text-[15px]">Recent Activity</AppText>
-              <AppText className="font-inter-semibold text-[13px] text-primary">See all</AppText>
-            </View>
-            <Card className="overflow-hidden p-0">
-              {recentActivity.map((item, i) => (
-                <View key={item.id}>
-                  <View className="flex-row items-center gap-3 px-4 py-3.5">
-                    <View className="h-[38px] w-[38px] items-center justify-center rounded-full bg-surface-low-light dark:bg-surface-low-dark">
-                      <Ionicons name={item.icon} size={18} color={P.primary} />
-                    </View>
-                    <View className="flex-1 gap-0.5">
-                      <AppText className="font-inter-medium text-sm">{item.label}</AppText>
-                      <AppText className="text-xs text-placeholder-light dark:text-placeholder-dark">{item.time}</AppText>
-                    </View>
-                    <Ionicons name="chevron-forward" size={16} color={P.placeholder} />
-                  </View>
-                  {i < recentActivity.length - 1 && <Divider />}
-                </View>
-              ))}
+          <Pressable onPress={() => router.push('/activity' as any)} style={pressScale}>
+            <Card className="flex-row items-center gap-3 p-4">
+              <View className="h-[42px] w-[42px] items-center justify-center rounded-full bg-surface-low-light dark:bg-surface-low-dark">
+                <Ionicons name="pulse-outline" size={20} color={P.primary} />
+              </View>
+              <View className="flex-1 gap-0.5">
+                <AppText className="font-inter-semibold text-[15px]">Recent Activity</AppText>
+                <AppText className="text-[13px] text-muted-light dark:text-muted-dark">
+                  See everything happening in your business
+                </AppText>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={P.muted} />
             </Card>
-          </View>
+          </Pressable>
 
         </View>
       </ScrollView>

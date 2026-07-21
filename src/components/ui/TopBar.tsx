@@ -2,8 +2,10 @@ import { View, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { AppText } from './AppText';
+import { OfflineBadge } from './OfflineBadge';
 import { usePalette } from './palette';
 import { useSidebar } from './Sidebar';
+import { useIsOnline } from '@/src/hooks/useIsOnline';
 
 type TopBarProps = {
   /** Title text shown next to the TP badge. */
@@ -22,6 +24,7 @@ type TopBarProps = {
 export function TopBar({ title, variant = 'surface', onSettings, onNotifications }: TopBarProps) {
   const P = usePalette();
   const { open } = useSidebar();
+  const online = useIsOnline();
 
   const barClass =
     variant === 'glass'
@@ -38,6 +41,7 @@ export function TopBar({ title, variant = 'surface', onSettings, onNotifications
           <AppText className="font-inter-bold text-xs tracking-[0.5px] text-white">TP</AppText>
         </View>
         <AppText className="font-inter-semibold text-base">{title}</AppText>
+        {!online && <OfflineBadge />}
       </View>
 
       <View className="flex-row items-center gap-3">

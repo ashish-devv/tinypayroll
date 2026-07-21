@@ -72,3 +72,23 @@ export async function updateEmployee(id: string, input: EmployeeInput & { status
 export async function deleteEmployee(id: string): Promise<void> {
   await api.delete(`/employees/${id}`);
 }
+
+// Flip an employee active/inactive without opening the edit form. The PUT endpoint expects
+// the full record, so we rebuild the input payload from the employee we already hold.
+export async function setEmployeeStatus(emp: Employee, status: 'ACTIVE' | 'INACTIVE'): Promise<Employee> {
+  return updateEmployee(emp.id, {
+    name: emp.name,
+    role: emp.role,
+    department: emp.department,
+    departmentId: emp.departmentId,
+    designationId: emp.designationId,
+    baseSalary: emp.baseSalary,
+    salaryType: emp.salaryType ?? (emp.baseSalary >= 10000 ? 'MONTHLY' : 'DAILY'),
+    joinDate: emp.joinDate,
+    phone: emp.phone,
+    bankAccountNumber: emp.bankAccount,
+    bankName: emp.bankName,
+    ifsc: emp.ifsc,
+    status,
+  });
+}

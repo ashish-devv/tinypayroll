@@ -36,10 +36,11 @@ TinyPayroll is a full-stack payroll app aimed at small business owners — baker
 | **Authentication** | Email + password signup/login. Signup creates a business (tenant) and its owner in one step. JWT access + refresh tokens, stored securely on-device. A `401` from any API call drops you straight back to the login screen. |
 | **Employees** | Add, view, edit, and delete (soft-delete) employees. Each carries role, salary type (monthly/daily), base salary, join date, phone, and bank details. |
 | **Attendance** | Month calendar. Tap a day to cycle a status: present → absent → leave → holiday. Marks are upserted per employee per day. |
-| **Payroll runs** | Create a draft run for any month — past, present, or future via the period picker. It auto-seeds line items from attendance (absent days become unpaid-leave deductions). Adjust overtime/bonus/advances/deductions per employee, then finalize to lock it as **Paid**. Runs can be soft-deleted (any status); deleting frees the period so it can be recreated. |
+| **Payroll runs** | Create a draft run for any month — past, present, or future via the period picker. It snapshots the currently **active** employees and auto-seeds line items from attendance (absent days become unpaid-leave deductions). Adjust overtime/bonus/advances/deductions per employee, then finalize to lock it as **Paid**. Runs can be soft-deleted (any status); deleting frees the period so it can be recreated. |
 | **Org catalog** | Per-business departments and designations, managed from a dedicated catalog screen. Roles/departments are picked (or created on the fly) when adding/editing employees. |
 | **Payslips** | Per-run, per-employee payslip. Export to PDF, share via the native share sheet, or open a prefilled WhatsApp chat with the employee. |
 | **Reports** | Year-to-date expense trend, per-period totals, and employee-cost breakdown. Export as CSV or PDF. |
+| **Recent activity** | A business-scoped audit feed (employee, business, and payroll changes) surfaced via a "Recent Activity" button on the dashboard that opens a paginated All Activity screen. Pages are cached client-side for 10s to spare the database. |
 | **Business config** | Company profile + payroll settings (pay day, working days/month, OT rate, currency) and feature toggles (auto reminders, WhatsApp payslips). |
 | **Dark mode** | Every screen fully supports light and dark, driven by the device color scheme. |
 
@@ -53,7 +54,8 @@ All screens are built and support both light and dark mode.
 
 | Screen | Route | Purpose |
 |---|---|---|
-| Dashboard | `app/(tabs)/index.tsx` | Overview — headcount, this month's payroll, quick actions |
+| Dashboard | `app/(tabs)/index.tsx` | Overview — headcount, present today, this month's payroll, quick actions; "Recent Activity" button |
+| All activity | `app/activity.tsx` | Full audit feed — paginated "Show more" with skeleton rows; opened from the dashboard |
 | Employees list | `app/(tabs)/employees.tsx` | Tap a row → employee detail |
 | Employee detail | `app/employees/[id].tsx` | Profile, salary, bank info; Edit / Delete |
 | Add / Edit employee | `app/employees/add.tsx`, `edit.tsx` | Create and update forms; dept/role via searchable ComboBox |
@@ -274,7 +276,7 @@ These keep the codebase consistent — see `CLAUDE.md` for the complete list.
 
 ## Roadmap
 
-Delivered: full MVP — auth, employees, attendance, payroll runs + finalize, payslips (with PDF/share/WhatsApp), reports (CSV/PDF), and business config, all wired to the real backend across both light and dark mode.
+Delivered: full MVP — auth, employees, attendance, payroll runs + finalize, payslips (with PDF/share/WhatsApp), reports (CSV/PDF), a recent-activity audit feed, and business config, all wired to the real backend across both light and dark mode.
 
 Planned (see `PRD.md` §11 and `TASKS.md`):
 

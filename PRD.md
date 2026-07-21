@@ -57,7 +57,7 @@ com.tinypayroll
  ├─ attendance/       same shape
  ├─ payroll/          PayrollRunController/Service/Repository, PayrollRunItem, PayrollCalculationService, dto/
  ├─ report/           ReportController, ReportService (aggregation queries, CSV/PDF export)
- └─ audit/            AuditLogEntity, AuditLogService, @Auditable annotation + AOP aspect
+ └─ audit/            AuditLogEntity, AuditLogService, AuditLogController, @Auditable annotation + AOP aspect
 ```
 
 ---
@@ -155,7 +155,7 @@ Computed once in `PayrollCalculationService`, unit-tested (see §9), never trust
 ### `AuditLog`
 | id, business_id, user_id, action, entityType, entityId, oldValue (JSON text), newValue (JSON text), ipAddress, createdAt |
 |---|
-Written via an `@Auditable` annotation + AOP aspect around service methods that mutate payroll runs, employee records, or business config — not hand-rolled per method.
+Written via an `@Auditable` annotation + AOP aspect around service methods that mutate payroll runs, employee records, or business config — not hand-rolled per method. Read back (newest-first, business-scoped) via `GET /api/v1/audit-logs` for the app's Recent Activity feed.
 
 ---
 

@@ -29,6 +29,9 @@ export default function PayslipsListScreen() {
   useEffect(() => {
     if (!runId) return;
     let cancelled = false;
+    // A run is a snapshot of who was active at creation time. Show every item in the run; load
+    // ALL employees only to resolve names/roles (an employee active at creation but deactivated
+    // since must still show here). Never re-filter membership by current status.
     Promise.all([getPayrollRun(runId), listEmployees()])
       .then(([r, employees]) => {
         if (cancelled) return;

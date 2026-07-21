@@ -6,6 +6,8 @@ export { Button } from './Button';
 export { Chip, type ChipTone } from './Chip';
 export { ComboBox, type ComboOption } from './ComboBox';
 export { TopBar } from './TopBar';
+export { OfflineBadge } from './OfflineBadge';
+export { Skeleton, SkeletonGroup } from './Skeleton';
 export { SidebarProvider, useSidebar } from './Sidebar';
 export { usePalette } from './palette';
 export { useShadows, pressScale } from './shadows';

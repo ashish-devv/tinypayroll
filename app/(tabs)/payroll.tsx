@@ -58,10 +58,25 @@ export default function PayrollScreen() {
       setPickerOpen(false);
       router.push({ pathname: '/payroll/review', params: { runId: run.id } } as any);
     } catch (e) {
-      // 409 = a run for this period already exists (e.g. a prior attempt succeeded before an
-      // earlier error was reported) — refetch so the existing run shows up instead of just
-      // leaving the user stuck looking at an error with a stale list.
-      refetch();
+      // A run for this period already exists (409, or a prior attempt succeeded before an earlier
+      // error surfaced). Instead of stranding the user on an error, find the existing run and open
+      // it — pending → review, paid → its payslips.
+      try {
+        const all = await listPayrollRuns();
+        setRuns(all);
+        const existing = all.find((r) => r.month === pickMonth && r.year === pickYear);
+        if (existing) {
+          setPickerOpen(false);
+          if (existing.status === 'paid') {
+            router.push({ pathname: '/payroll/payslips', params: { runId: existing.id } } as any);
+          } else {
+            router.push({ pathname: '/payroll/review', params: { runId: existing.id } } as any);
+          }
+          return;
+        }
+      } catch {
+        // fall through to the generic error below
+      }
       setCreateError(e instanceof Error ? e.message : 'Could not start payroll run');
     } finally {
       setCreating(false);

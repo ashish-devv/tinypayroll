@@ -1,5 +1,6 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // ponytail: base URL resolution.
 // - EXPO_PUBLIC_API_URL wins when set (e.g. the deployed Render backend) — set it in .env.
@@ -61,7 +62,21 @@ export async function clearTokens() {
   await Promise.all([
     store.deleteItemAsync(ACCESS_KEY),
     store.deleteItemAsync(REFRESH_KEY),
+    clearCache(),
   ]);
+}
+
+// ponytail: read-through offline cache. GETs mirror their last live response into AsyncStorage,
+// keyed by path; on a network failure (fetch throws, vs. a resolved non-ok server response) we
+// serve that mirror. Writes never touch the cache — offline writes hard-fail (see apiFetch).
+// AsyncStorage is one cross-platform KV (native on iOS/Android, localStorage on web), unlike
+// SecureStore (2KB Android cap) or expo-file-system (native-only).
+const CACHE_PREFIX = 'tp_cache:';
+
+async function clearCache() {
+  const keys = await AsyncStorage.getAllKeys();
+  const ours = keys.filter((k) => k.startsWith(CACHE_PREFIX));
+  if (ours.length) await AsyncStorage.multiRemove(ours);
 }
 
 // ponytail: bridge from this non-React module to AuthProvider. When a request 401s and the
@@ -103,14 +118,30 @@ async function refreshAccessToken(): Promise<string | null> {
 
 export async function apiFetch(path: string, options: RequestInit = {}, retry = true): Promise<any> {
   const { accessToken } = await getTokens();
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-      ...options.headers,
-    },
-  });
+  const method = (options.method ?? 'GET').toUpperCase();
+  const isRead = method === 'GET';
+  const cacheKey = CACHE_PREFIX + path;
+
+  let res: Response;
+  try {
+    res = await fetch(`${BASE_URL}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        ...options.headers,
+      },
+    });
+  } catch (e) {
+    // ponytail: fetch throws only on network failure (offline/DNS/timeout) — server errors resolve
+    // with a non-ok status. So a throw here means we're offline: serve the cached GET if we have one,
+    // otherwise fail writes/uncached reads with a clear offline message.
+    if (isRead) {
+      const cached = await AsyncStorage.getItem(cacheKey);
+      if (cached !== null) return JSON.parse(cached);
+    }
+    throw new ApiError(0, "You're offline — connect to sync changes.");
+  }
 
   if (res.status === 401 && retry && accessToken) {
     const newToken = await refreshAccessToken();
@@ -129,7 +160,9 @@ export async function apiFetch(path: string, options: RequestInit = {}, retry = 
     throw new ApiError(res.status, message, fieldErrors);
   }
   if (res.status === 204) return null;
-  return res.json();
+  const data = await res.json();
+  if (isRead) await AsyncStorage.setItem(cacheKey, JSON.stringify(data));
+  return data;
 }
 
 export const api = {

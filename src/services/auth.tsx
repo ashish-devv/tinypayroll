@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { api, ApiError, getTokens, setTokens, clearTokens, store, setUnauthorizedHandler } from '@/src/services/api';
+import { clearActivityCache } from '@/src/services/activity';
 
 const ONBOARDED_KEY = 'tp_has_onboarded';
 
@@ -80,6 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signOut() {
     const { refreshToken } = await getTokens();
     await clearTokens();
+    clearActivityCache();
     setUser(null);
     if (refreshToken) api.post('/auth/logout', { refreshToken }).catch(() => {});
   }

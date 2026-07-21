@@ -4,14 +4,26 @@ import { useEffect, useState } from 'react';
 
 import { Screen, Card, AppText, TopBar, usePalette, useShadows, pressScale } from '@/src/components/ui';
 import { listEmployees } from '@/src/services/employees';
-import { listAttendance, markAttendance } from '@/src/services/attendance';
+import { listAttendance, markAttendance, markAttendanceBatch } from '@/src/services/attendance';
 import type { AttendanceStatus, Employee } from '@/src/types';
 
-const CYCLE: AttendanceStatus[] = ['present', 'absent', 'leave', 'holiday'];
+// Statuses the picker sheet can set (weekend is derived, never chosen).
+const PICKABLE: { status: AttendanceStatus; label: string }[] = [
+  { status: 'present', label: 'Present' },
+  { status: 'absent',  label: 'Absent' },
+  { status: 'leave',   label: 'Paid Leave' },
+  { status: 'holiday', label: 'Holiday' },
+];
 
 const DAYS   = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
 const MONTHS = ['January','February','March','April','May','June',
                 'July','August','September','October','November','December'];
+const WEEKDAY = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+
+function pad2(n: number) { return String(n).padStart(2, '0'); }
+function dateStr(year: number, month: number, day: number) {
+  return `${year}-${pad2(month + 1)}-${pad2(day)}`;
+}
 
 function getDaysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
@@ -32,6 +44,8 @@ export default function AttendanceScreen() {
   const [records, setRecords] = useState<{ date: string; status: AttendanceStatus }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pickerDay, setPickerDay] = useState<number | null>(null);
+  const [bulkSaving, setBulkSaving] = useState(false);
 
   useEffect(() => {
     listEmployees('ACTIVE').then(setActiveEmployees).catch((e) => setError(e instanceof Error ? e.message : 'Could not load employees'));
@@ -66,17 +80,63 @@ export default function AttendanceScreen() {
     if ((dow === 0 || dow === 6) && !attMap[d]) attMap[d] = 'weekend';
   }
 
-  async function markDay(day: number, current: AttendanceStatus | undefined) {
+  async function setDayStatus(day: number, next: AttendanceStatus | null) {
     if (!emp) return;
-    const idx = current && current !== 'weekend' ? CYCLE.indexOf(current) : -1;
-    const next = CYCLE[(idx + 1) % CYCLE.length];
-    const date = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    setRecords(rs => [...rs.filter(r => r.date !== date), { date, status: next }]);
+    setPickerDay(null);
+    const date = dateStr(year, month, day);
+    const prev = records;
+    // optimistic: null clears the day, otherwise upsert
+    setRecords((rs) =>
+      next === null
+        ? rs.filter((r) => r.date !== date)
+        : [...rs.filter((r) => r.date !== date), { date, status: next }],
+    );
     try {
-      await markAttendance(emp.id, date, next);
+      // Clearing a day maps to WEEKEND on the backend (the "unset" sentinel); the UI
+      // re-derives weekend vs. blank from the calendar, so this reads back as no mark.
+      await markAttendance(emp.id, date, next ?? 'weekend');
     } catch (e) {
+      setRecords(prev); // roll back
       setError(e instanceof Error ? e.message : 'Could not mark attendance');
     }
+  }
+
+  // Fill every working day (Mon–Fri) that isn't already Present with Present, in one batch.
+  // Up to today for the current month; the whole month otherwise.
+  async function markAllPresent() {
+    if (!emp || bulkSaving) return;
+    const lastDay = isCurrentMonth ? today : daysInMonth;
+    const targets: number[] = [];
+    for (let d = 1; d <= lastDay; d++) {
+      const dow = new Date(year, month, d).getDay();
+      if (dow === 0 || dow === 6) continue;       // skip weekends
+      if (attMap[d] === 'present') continue;        // already present
+      targets.push(d);
+    }
+    if (targets.length === 0) return;
+
+    setBulkSaving(true);
+    setError(null);
+    const prev = records;
+    const additions = targets.map((d) => ({ date: dateStr(year, month, d), status: 'present' as AttendanceStatus }));
+    const addedDates = new Set(additions.map((a) => a.date));
+    setRecords((rs) => [...rs.filter((r) => !addedDates.has(r.date)), ...additions]);
+    try {
+      await markAttendanceBatch(additions.map((a) => ({ employeeId: emp.id, ...a })));
+    } catch (e) {
+      setRecords(prev); // roll back
+      setError(e instanceof Error ? e.message : 'Could not mark attendance');
+    } finally {
+      setBulkSaving(false);
+    }
+  }
+
+  // Snap the calendar to the current month and open the status chooser for today,
+  // so "Mark Today" always targets the right date regardless of the viewed month.
+  function openToday() {
+    setYear(now.getFullYear());
+    setMonth(now.getMonth());
+    setPickerDay(now.getDate());
   }
 
   const present = Object.values(attMap).filter(s => s === 'present').length;
@@ -201,7 +261,7 @@ export default function AttendanceScreen() {
                           : P.text;
 
                     return (
-                      <Pressable key={col} onPress={() => markDay(day, status)} style={{ flex: 1, alignItems: 'center' }}>
+                      <Pressable key={col} onPress={() => setPickerDay(day)} style={{ flex: 1, alignItems: 'center' }}>
                         <View className="h-[34px] w-[34px] items-center justify-center rounded-[17px]"
                               style={{ backgroundColor: cellBg }}>
                           <AppText
@@ -259,15 +319,29 @@ export default function AttendanceScreen() {
             ))}
           </View>
 
-          {/* ── Quick mark CTA ── */}
-          <Pressable
-            onPress={() => isCurrentMonth && markDay(today, attMap[today])}
-            style={pressScale}
-          >
-            <View className="flex-row items-center justify-center gap-2 rounded-button bg-primary py-4" style={shadows.hero}>
-              <Ionicons name="calendar-outline" size={18} color="white" />
+          {/* ── Mark today's attendance (opens the status chooser for today) ── */}
+          <Pressable onPress={openToday} style={pressScale}>
+            <View className="flex-row items-center justify-center gap-2 rounded-button border border-primary py-4">
+              <Ionicons name="today-outline" size={18} color={P.primary} />
+              <AppText className="font-inter-semibold text-[15px] text-primary">
+                Mark Today&apos;s Attendance
+              </AppText>
+            </View>
+          </Pressable>
+
+          {/* ── Mark all remaining Present ── */}
+          <Pressable onPress={markAllPresent} disabled={bulkSaving} style={pressScale}>
+            <View
+              className="flex-row items-center justify-center gap-2 rounded-button bg-primary py-4"
+              style={[shadows.hero, bulkSaving && { opacity: 0.6 }]}
+            >
+              {bulkSaving ? (
+                <ActivityIndicator color="white" size="small" />
+              ) : (
+                <Ionicons name="checkmark-done-outline" size={18} color="white" />
+              )}
               <AppText className="font-inter-semibold text-[15px] text-white">
-                Quick Mark Today&apos;s Attendance
+                {bulkSaving ? 'Marking…' : 'Mark All Remaining Present'}
               </AppText>
             </View>
           </Pressable>
@@ -275,11 +349,81 @@ export default function AttendanceScreen() {
           {error && <AppText className="text-center text-xs text-rose-600">{error}</AppText>}
 
           <AppText className="text-center text-xs text-placeholder-light dark:text-placeholder-dark">
-            {loading ? 'Loading…' : 'Tap on any date to cycle status (present → absent → leave → holiday).'}
+            {loading ? 'Loading…' : 'Tap any date to set its status.'}
           </AppText>
 
         </View>
       </ScrollView>
+
+      {/* ── Status picker sheet ── */}
+      {pickerDay !== null && (() => {
+        const dow = new Date(year, month, pickerDay).getDay();
+        const current = attMap[pickerDay];
+        const canClear = current !== undefined && current !== 'weekend';
+        return (
+          <View className="absolute inset-0 justify-end">
+            <Pressable className="absolute inset-0 bg-black/40" onPress={() => setPickerDay(null)} />
+            <View className="rounded-t-card-lg bg-surface-light px-5 pb-8 pt-3 dark:bg-surface-dark" style={shadows.card}>
+              <View className="mb-4 h-1 w-10 self-center rounded-full bg-border-light dark:bg-border-dark" />
+              <AppText className="mb-1 font-inter-semibold text-lg">
+                Mark {MONTHS[month]} {pickerDay}
+              </AppText>
+              <AppText className="mb-4 text-[13px] text-muted-light dark:text-muted-dark">
+                {WEEKDAY[dow]} • {emp.name}
+              </AppText>
+
+              {/* 2×2 status grid */}
+              <View className="flex-row flex-wrap gap-2.5">
+                {PICKABLE.map(({ status, label }) => {
+                  const active = current === status;
+                  const st = P.status[status];
+                  return (
+                    <Pressable
+                      key={status}
+                      onPress={() => setDayStatus(pickerDay, status)}
+                      style={{ width: '47.5%' }}
+                    >
+                      <View
+                        className={`flex-row items-center gap-2.5 rounded-input border px-4 py-3.5 ${
+                          active
+                            ? 'border-primary'
+                            : 'border-border-light bg-surface-low-light dark:border-border-dark dark:bg-surface-low-dark'
+                        }`}
+                        style={active ? { backgroundColor: st.bg } : undefined}
+                      >
+                        <View className="h-3 w-3 rounded-full" style={{ backgroundColor: st.dot }} />
+                        <AppText
+                          className="font-inter-semibold text-[14px]"
+                          style={active ? { color: st.text } : undefined}
+                        >
+                          {label}
+                        </AppText>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {/* Clear */}
+              <Pressable
+                onPress={() => setDayStatus(pickerDay, null)}
+                disabled={!canClear}
+                style={pressScale}
+              >
+                <View
+                  className="mt-3 flex-row items-center justify-center gap-2 rounded-button border border-border-light py-3.5 dark:border-border-dark"
+                  style={!canClear ? { opacity: 0.45 } : undefined}
+                >
+                  <Ionicons name="close-circle-outline" size={18} color={P.muted} />
+                  <AppText className="font-inter-medium text-[14px] text-muted-light dark:text-muted-dark">
+                    Clear day
+                  </AppText>
+                </View>
+              </Pressable>
+            </View>
+          </View>
+        );
+      })()}
     </Screen>
   );
 }

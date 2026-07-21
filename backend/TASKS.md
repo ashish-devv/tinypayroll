@@ -79,6 +79,7 @@ Status legend: `[ ]` todo · `[~]` in progress · `[x]` done
 - [x] AuditLog entity (business_id, user_id, action, entityType, entityId, newValue JSON, ipAddress, createdAt)
 - [x] @Auditable annotation + AuditAspect (@Around, logs after successful mutation; oldValue diffing skipped — ponytail, add when a real audit review needs it)
 - [x] AuditLogService — wired onto EmployeeService.create/update/softDelete, BusinessService.updateCurrent, PayrollRunService.create/adjustItem/finalizeRun
+- [x] AuditLogController — `GET /api/v1/audit-logs?page=&size=` (business-scoped, newest first, `size` capped at 100) returns `PageResponse<AuditLogResponse>` for the app's Recent Activity feed; `entityLabel` derived best-effort from the `newValue` JSON
 - (pom.xml gained aspectjweaver 1.9.22.1 for @Aspect annotation support)
 
 ## tests

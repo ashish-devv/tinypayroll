@@ -26,6 +26,7 @@ import com.tinypayroll.backend.common.exceptions.ConflictException;
 import com.tinypayroll.backend.common.exceptions.NotFoundException;
 import com.tinypayroll.backend.employee.Employee;
 import com.tinypayroll.backend.employee.EmployeeRepository;
+import com.tinypayroll.backend.employee.EmployeeStatus;
 import com.tinypayroll.backend.employee.SalaryType;
 import com.tinypayroll.backend.payroll.dto.CreatePayrollRunRequest;
 import com.tinypayroll.backend.payroll.dto.PayrollAdjustment;
@@ -114,7 +115,10 @@ public class PayrollRunService {
                 .createdByUserId(createdByUserId)
                 .build());
 
-        List<Employee> employees = employeeRepository.findByBusinessId(businessId);
+        // Snapshot membership at creation time: only employees ACTIVE right now get an item. An
+        // employee inactive at creation is excluded from this run entirely; if they're reactivated
+        // later, they'll be picked up when the next month's run is created — never retroactively.
+        List<Employee> employees = employeeRepository.findByBusinessIdAndStatus(businessId, EmployeeStatus.ACTIVE);
         Map<Long, List<AttendanceRecord>> attendanceByEmployee = attendanceRepository
                 .findByBusinessIdAndDateBetween(businessId, period.atDay(1), period.atEndOfMonth())
                 .stream()

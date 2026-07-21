@@ -100,6 +100,7 @@ app/
     attendance.tsx      # Attendance Calendar ✅
     payroll.tsx         # Payroll runs list ✅
     reports.tsx         # Reports + export ✅
+  activity.tsx          # All Activity ✅ (full audit feed, paginated "Show more" + skeleton rows; opened from the Dashboard's "Recent Activity" button)
   employees/
     add.tsx             # Add Employee modal ✅ (dept/role via ComboBox off the catalog, create-on-the-fly)
     edit.tsx            # Edit Employee ✅
@@ -121,7 +122,7 @@ Payroll runs can be created for any past/future month (period picker sheet) and 
 src/
   components/
     ui/                 # shared NativeWind UI: Screen, Card, AppText, Divider, Button, Chip,
-                        #   TopBar, Sidebar (SidebarProvider/useSidebar), palette, shadows
+                        #   TopBar, Sidebar (SidebarProvider/useSidebar), Skeleton (reanimated pulse), palette, shadows
   components/
     ui/
       ComboBox.tsx      # typeahead select with create-on-the-fly (departments/designations)
@@ -129,9 +130,8 @@ src/
     index.ts            # Employee, PayrollRun, AttendanceRecord, BusinessConfig, PayrollAdjustment, Department, Designation
   utils/
     payroll.ts          # calculateFinalSalary(), buildPayrollItem(), formatCurrency() — pure, assert at bottom
-  data/
-    mock.ts             # 5 employees, 3 payroll runs (Jun pending, May/Apr paid), attendance records
-  services/             # REST clients: api, auth, employees, payroll, reports, departments, designations, theme
+  services/             # REST clients: api, auth, employees, payroll, reports, departments, designations, theme,
+                        #   activity (audit feed; 10s stale-while-dedup page cache, cleared on signOut)
 ```
 
 Styling config lives at the repo root: `tailwind.config.js` (design tokens), `global.css`, `metro.config.js` (`withNativeWind`), `babel.config.js` (`nativewind/babel` + `jsxImportSource`).
@@ -173,5 +173,6 @@ Implemented in `src/utils/payroll.ts`. Always compute here, never inline in comp
 | Employee detail | `employees/[id].tsx` | ✅ |
 | Payslips list | `payroll/payslips.tsx` | ✅ |
 | Org Catalog | `settings/catalog.tsx` | ✅ |
+| All Activity | `activity.tsx` | ✅ |
 
 For any new screen: pull from Stitch MCP first, match layout, use `<Screen>`/`<Card>`/`<AppText>` from `src/components/ui`, implement dark mode via `dark:` classes, add press-in scale (`style={pressScale}`) on tappable cards.
